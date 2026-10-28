@@ -184,23 +184,45 @@ final class Channels {
                 TvContract.PreviewPrograms.COLUMN_POSTER_ART_URI, TvContract.PreviewPrograms.COLUMN_THUMBNAIL_URI,
                 TvContract.PreviewPrograms.COLUMN_INTENT_URI, TvContract.PreviewPrograms.COLUMN_BROWSABLE,
                 TvContract.PreviewPrograms.COLUMN_SEASON_DISPLAY_NUMBER, TvContract.PreviewPrograms.COLUMN_EPISODE_DISPLAY_NUMBER,
-                TvContract.PreviewPrograms.COLUMN_EPISODE_TITLE};
-        try (Cursor cur = c.getContentResolver().query(TvContract.buildPreviewProgramsUriForChannel(ch.id), cols, null, null, null)) {
-            while (cur != null && cur.moveToNext() && ch.items.size() < MAX_ITEMS) {
-                if (!cur.isNull(5) && cur.getInt(5) == 0) continue;
+                TvContract.PreviewPrograms.COLUMN_EPISODE_TITLE, TvContract.PreviewPrograms.COLUMN_WEIGHT,
+                ENGAGED};
+        // Android declares the last-watched column for Watch Next only, but its table for channel cards has it too;
+        // read it by name in case a TV's doesn't.
+        try (Cursor cur = c.getContentResolver().query(TvContract.buildPreviewProgramsUriForChannel(ch.id), null, null, null, null)) {
+            if (cur == null) return;
+            int[] col = new int[cols.length];
+            for (int i = 0; i < cols.length; i++) col[i] = cur.getColumnIndex(cols[i]);
+            // What you watched last first, where the app says when (Nuvio does); then the app's own weight;
+            // then the order the app added them (a stable sort keeps it). An idea from Plume (MIT).
+            List<Integer> rows = new ArrayList<>();
+            List<long[]> keys = new ArrayList<>();
+            while (cur.moveToNext()) {
+                if (col[5] >= 0 && !cur.isNull(col[5]) && cur.getInt(col[5]) == 0) continue;
+                rows.add(cur.getPosition());
+                keys.add(new long[]{num(cur, col[10]), num(cur, col[9])});
+            }
+            List<Integer> order = new ArrayList<>();
+            for (int i = 0; i < rows.size(); i++) order.add(i);
+            order.sort((a, b) -> {
+                long[] x = keys.get(a), y = keys.get(b);
+                return x[0] != y[0] ? Long.compare(y[0], x[0]) : Long.compare(y[1], x[1]);
+            });
+            for (int i : order) {
+                if (ch.items.size() >= MAX_ITEMS) break;
+                cur.moveToPosition(rows.get(i));
                 Trending.Pick p = new Trending.Pick();
                 p.kind = "channel";
                 p.tab = ch.key;
                 p.pkg = ch.pkg;
-                p.title = str(cur, 0);
-                String season = str(cur, 6), episode = str(cur, 7), epTitle = str(cur, 8), desc = str(cur, 1);
+                p.title = str(cur, col[0]);
+                String season = str(cur, col[6]), episode = str(cur, col[7]), epTitle = str(cur, col[8]), desc = str(cur, col[1]);
                 StringBuilder m = new StringBuilder();
                 if (!season.isEmpty()) m.append("Season ").append(season);
                 if (!episode.isEmpty()) m.append(m.length() > 0 ? " · " : "").append("Episode ").append(episode);
                 if (!epTitle.isEmpty() && !epTitle.equals(p.title)) m.append(m.length() > 0 ? " · " : "").append(epTitle);
                 p.meta = m.length() > 0 ? m.toString() : desc;
-                p.intentUri = str(cur, 4).isEmpty() ? null : str(cur, 4);
-                String art = !str(cur, 3).isEmpty() ? str(cur, 3) : str(cur, 2);
+                p.intentUri = str(cur, col[4]).isEmpty() ? null : str(cur, col[4]);
+                String art = !str(cur, col[3]).isEmpty() ? str(cur, col[3]) : str(cur, col[2]);
                 p.id = (ch.key + "\n" + p.title + "\n" + art).hashCode();
                 p.image = art.isEmpty() ? null : WatchNext.cached(c, dir, art, ART_W);
                 if (p.image != null) keep.add(p.image.getName());
@@ -211,8 +233,12 @@ final class Channels {
         }
     }
 
+    private static final String ENGAGED = "last_engagement_time_utc_millis";
+
+    private static long num(Cursor c, int i) { return i < 0 || c.isNull(i) ? 0 : c.getLong(i); }
+
     private static String str(Cursor c, int i) {
-        String s = c.isNull(i) ? null : c.getString(i);
+        String s = i < 0 || c.isNull(i) ? null : c.getString(i);
         return s == null || s.equals("null") ? "" : s.trim();
     }
 

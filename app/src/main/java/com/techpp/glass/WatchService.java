@@ -138,7 +138,7 @@ public class WatchService extends NotificationListenerService {
 
     private static String squash(String s) { return s.toLowerCase(java.util.Locale.ROOT).replaceAll("[^a-z0-9]", ""); }
 
-    private static String text(MediaMetadata m, String... keys) {
+    static String text(MediaMetadata m, String... keys) {
         if (m == null) return "";
         for (String k : keys) {
             CharSequence v = m.getText(k);
@@ -162,7 +162,7 @@ public class WatchService extends NotificationListenerService {
         Log.i("GlassRecent", b.toString());
     }
 
-    private static Bitmap art(MediaMetadata m) {
+    static Bitmap art(MediaMetadata m) {
         for (String k : new String[]{MediaMetadata.METADATA_KEY_ART, MediaMetadata.METADATA_KEY_ALBUM_ART,
                 MediaMetadata.METADATA_KEY_DISPLAY_ICON}) {
             Bitmap b = m.getBitmap(k);

@@ -62,6 +62,9 @@ final class Sleep {
 
     static boolean available() { return SleepService.isRunning(); }
 
+    /** Standby goes through the accessibility "lock screen" action, which Android added in 9; on 8 the rows are hidden. */
+    static final boolean SUPPORTED = Build.VERSION.SDK_INT >= 28;
+
     /** Minutes left on the timer, or 0 when it is off. */
     static int minutesLeft(Context c) {
         long left = prefs(c).getLong(AT, 0) - System.currentTimeMillis();

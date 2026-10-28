@@ -24,6 +24,9 @@ import android.graphics.drawable.Drawable;
 import android.graphics.drawable.GradientDrawable;
 import android.media.AudioDeviceInfo;
 import android.media.AudioManager;
+import android.media.MediaMetadata;
+import android.media.session.MediaController;
+import android.media.session.PlaybackState;
 import android.media.tv.TvContract;
 import android.media.tv.TvInputInfo;
 import android.media.tv.TvInputManager;
@@ -33,6 +36,8 @@ import android.net.NetworkCapabilities;
 import android.os.Build;
 import android.net.Uri;
 import android.os.Bundle;
+import android.os.Handler;
+import android.os.Looper;
 import android.provider.Settings;
 import android.text.SpannableStringBuilder;
 import android.text.Spanned;
@@ -40,6 +45,7 @@ import android.text.format.DateFormat;
 import android.text.style.ForegroundColorSpan;
 import android.text.style.StyleSpan;
 import android.util.Log;
+import android.view.Gravity;
 import android.view.KeyEvent;
 import android.view.LayoutInflater;
 import android.view.View;
@@ -169,6 +175,11 @@ public class HomeActivity extends Activity {
     private Theme theme;
     private long wallpaperStamp = -1;
     private boolean hasWallpaper;
+    private Bing bing;
+    private Legibility wallFit;  // how much veil the wallpaper needs behind text (null: no wallpaper)
+    // The accessibility service should be running and isn't (ServiceRepair.stopped): a note at the top says so.
+    private TextView serviceNote;
+    private boolean serviceStopped, rebindTried;
     // For You (title, tabs, picks) can be hidden in Control Center; a large clock, date and weather take its place.
     private boolean forYou;
     private View forYouHead, bigClock;
@@ -217,6 +228,8 @@ public class HomeActivity extends Activity {
     protected void onCreate(Bundle state) {
         super.onCreate(state);
         setContentView(R.layout.activity_home);
+        weigh(this::findViewById, R.id.title, 600, R.id.info, 400, R.id.score, 500, R.id.big_weather, 500, R.id.big_time, 400,
+                R.id.big_ampm, 500, R.id.big_date, 500, R.id.all_apps_label, 600, R.id.move_hint, 450);
         dp = getResources().getDisplayMetrics().density;
         prefs = getSharedPreferences("home", MODE_PRIVATE);
         pm = getPackageManager();
@@ -257,6 +270,7 @@ public class HomeActivity extends Activity {
         AppEntry.setBannerSize(px(GRID_TILE_W * 1.10f), px(GRID_TILE_H * 1.10f));
         trending = new Trending(this);
         weather = new Weather(this);
+        bing = new Bing(this, background);
         cricket = new Cricket(this);
         football = new Football(this);
         score = findViewById(R.id.score);
@@ -311,6 +325,7 @@ public class HomeActivity extends Activity {
     private void applyTheme() {
         theme = Theme.of(day);
         backdrop.setTheme(day, theme.bgTop, theme.bgBottom, theme.scrimTop, theme.scrimMid, theme.scrimBottom, theme.ambientAlpha);
+        backdrop.setScrimStops(wallpaperScrim());
         title.setTextColor(theme.text);
         bigTime.setTextColor(theme.text);
         bigAmPm.setTextColor(theme.text);
@@ -338,6 +353,34 @@ public class HomeActivity extends Activity {
         for (View t : gridTiles) t.setBackground(rounded(theme.tileBg, 0, 11));
         styleTop();
         updateInfo();
+    }
+
+    /**
+     * The veil over a wallpaper: at each stop the theme's usual scrim, or more where the photo needs it for the text
+     * to stay readable (Legibility).
+     */
+    private int[] wallpaperScrim() {
+        if (wallFit == null) return null;
+        float[] need = day ? wallFit.forLight : wallFit.forDark;
+        int n = Legibility.STOPS;
+        int[] out = new int[n];
+        for (int i = 0; i < n; i++) {
+            float y = i / (float) (n - 1);
+            // The theme's own three-stop scrim at this height.
+            int base = y <= 0.5f ? lerpColor(theme.scrimTop, theme.scrimMid, y * 2) : lerpColor(theme.scrimMid, theme.scrimBottom, (y - 0.5f) * 2);
+            int a = Math.max(base >>> 24, Math.round(need[i] * 255));
+            out[i] = (a << 24) | (base & 0x00FFFFFF);
+        }
+        return out;
+    }
+
+    private static int lerpColor(int a, int b, float t) {
+        int out = 0;
+        for (int sh = 0; sh <= 24; sh += 8) {
+            int x = (a >>> sh) & 0xFF, y = (b >>> sh) & 0xFF;
+            out |= Math.round(x + (y - x) * t) << sh;
+        }
+        return out;
     }
 
     private GradientDrawable rounded(int fill, int stroke, float radiusDp) {
@@ -494,6 +537,8 @@ public class HomeActivity extends Activity {
 
     private boolean isDayNow() {
         int mode = prefs.getInt("appearance", 0);
+        // Auto with a wallpaper: the look the photo suits, so text stays readable on it.
+        if (mode == 0 && wallFit != null) return wallFit.prefersLight();
         return mode == 1 || (mode == 0 && weather.isDay());
     }
 
@@ -1560,10 +1605,10 @@ public class HomeActivity extends Activity {
                 openPick(chanRows.get(chanIdx).items.get(chanCol[chanIdx]));
                 break;
             case Z_DOCK:
-                start(apps.get(dockIdx).launchIntent());
+                startFromTile(apps.get(dockIdx).launchIntent());
                 break;
             case Z_GRID:
-                start(apps.get(dockCount + gridIdx).launchIntent());
+                startFromTile(apps.get(dockCount + gridIdx).launchIntent());
                 break;
         }
     }
@@ -1572,7 +1617,7 @@ public class HomeActivity extends Activity {
     private void openPick(Trending.Pick p) {
         if (p.intentUri != null) {
             try {
-                startActivity(Intent.parseUri(p.intentUri, Intent.URI_INTENT_SCHEME).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK));
+                startActivity(Intent.parseUri(p.intentUri, Intent.URI_INTENT_SCHEME).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK), fromTile());
                 return;
             } catch (Exception ex) {
                 Log.w(TAG, "Link failed, opening the app: " + ex.getClass().getSimpleName());
@@ -1587,7 +1632,7 @@ public class HomeActivity extends Activity {
             return;
         }
         Intent i = p.pkg == null ? null : pm.getLeanbackLaunchIntentForPackage(p.pkg);
-        if (i != null) start(i);
+        if (i != null) startFromTile(i);
         else if (p.extra instanceof Cricket.Match && ((Cricket.Match) p.extra).football) Toast.makeText(this, "Talkies doesn't know where to watch football yet", Toast.LENGTH_SHORT).show();
         else if (p.extra instanceof Cricket.Match) Toast.makeText(this, "None of your apps has a card for this match", Toast.LENGTH_SHORT).show();
     }
@@ -1609,6 +1654,26 @@ public class HomeActivity extends Activity {
             else Toast.makeText(this, "This TV has no settings app Talkies can open", Toast.LENGTH_SHORT).show();
         }
         start(i);
+    }
+
+    /**
+     * The app grows out of the focused tile or card, from the ring's rectangle. It's the window animation Android
+     * draws anyway, only starting from the tile instead of the middle, so it costs nothing extra. Talkies settings
+     * → Apps open from their tile turns it off. An idea from Plume (MIT).
+     */
+    private Bundle fromTile() {
+        if (!prefs.getBoolean("open_animation", true) || focusedView == null || ring.rect.isEmpty()) return null;
+        RectF r = ring.rect;
+        return android.app.ActivityOptions.makeScaleUpAnimation(ring, Math.round(r.left), Math.round(r.top),
+                Math.round(r.width()), Math.round(r.height())).toBundle();
+    }
+
+    private void startFromTile(Intent i) {
+        try {
+            startActivity(i.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK), fromTile());
+        } catch (ActivityNotFoundException | SecurityException ex) {
+            Log.w(TAG, "Cannot start " + i, ex);
+        }
     }
 
     private void start(Intent i) {
@@ -1641,6 +1706,7 @@ public class HomeActivity extends Activity {
         moveHint.setAlpha(0f);
         moveHint.setVisibility(View.VISIBLE);
         moveHint.animate().alpha(1f).setDuration(150).start();
+        showServiceNote();
     }
 
     /** Moves the picked-up app one step. In a row it swaps with its neighbour; between the dock and the grid it
@@ -1697,7 +1763,7 @@ public class HomeActivity extends Activity {
         for (int i = 0; i < apps.size(); i++) if (apps.get(i).pkg.equals(movingPkg)) at = i;
         final int pos = at;
         root.post(() -> { if (pos < dockCount) focusDock(pos); else focusGrid(pos - dockCount); });
-        moveHint.animate().alpha(0f).setDuration(120).withEndAction(() -> moveHint.setVisibility(View.GONE)).start();
+        moveHint.animate().alpha(0f).setDuration(120).withEndAction(() -> { moveHint.setVisibility(View.GONE); showServiceNote(); }).start();
     }
 
     private void saveOrder() {
@@ -1736,9 +1802,19 @@ public class HomeActivity extends Activity {
         }
     }
 
+    /**
+     * Outfit's weights for the layouts' text, as (view id, weight) pairs. They're set here rather than in the layouts
+     * because the layout attribute only works from Android 9, while this call works from Android 8.
+     */
+    private static void weigh(java.util.function.IntFunction<View> find, int... idWeight) {
+        for (int i = 0; i < idWeight.length; i += 2)
+            ((TextView) find.apply(idWeight[i])).setFontVariationSettings("'wght' " + idWeight[i + 1]);
+    }
+
     /** A row with a label, an optional status on the right, and what OK does. */
     private View addRow(String label, String status, Runnable action, boolean keepOpen) {
         View row = LayoutInflater.from(this).inflate(R.layout.item_input, menu, false);
+        weigh(row::findViewById, R.id.input_label, 450, R.id.input_status, 400);
         ((TextView) row.findViewById(R.id.input_label)).setText(label);
         row.findViewById(R.id.input_dot).setVisibility(View.GONE);
         setStatus(row, status);
@@ -1852,8 +1928,14 @@ public class HomeActivity extends Activity {
                 if (firstEmpty < 0) firstEmpty = menuItems.size();
             }
             View row = addInput(name, tim, i, passthrough(i));
-            String device = cecStatus(tim, cec.get(i.getId()));
-            if (device != null) { setStatus(row, device); named = true; }
+            TvInputInfo behind = cec.get(i.getId());
+            String device = cecStatus(tim, behind);
+            if (device != null) {
+                setStatus(row, device);
+                named = true;
+                ImageView dot = row.findViewById(R.id.input_dot);
+                if (dot.getVisibility() == View.VISIBLE) dot.setColorFilter(identify(behind).color, PorterDuff.Mode.SRC_IN);
+            }
         }
         n = 1;
         for (TvInputInfo i : av) {
@@ -1911,18 +1993,107 @@ public class HomeActivity extends Activity {
     }
 
     /**
-     * "Amazon FireTV · Standby": the device's own name and power state, as it reports them over HDMI-CEC (the TV keeps
-     * them as an input behind the port). Null when nothing CEC-capable is plugged in. Idea from Matinee (MIT).
+     * "Fire TV · Standby": the device and its power state, as it reports them over HDMI-CEC (the TV keeps them as an
+     * input behind the port), under the name it's known by (Devices). Null when nothing CEC-capable is plugged in.
+     * Idea from Matinee (MIT).
      */
     private String cecStatus(TvInputManager tim, TvInputInfo device) {
         if (tim == null || device == null) return null;
-        String name = label(device).trim();
-        if (name.isEmpty() || name.contains("HW") || name.contains("/")) return null;
+        String raw = label(device).trim();
+        if (raw.isEmpty() || raw.contains("HW") || raw.contains("/")) return null;
+        String name = identify(device).name;
         int state;
         try { state = tim.getInputState(device.getId()); } catch (Exception e) { return name; }
         if (state == TvInputManager.INPUT_STATE_CONNECTED) return name + "  ·  On";
         if (state == TvInputManager.INPUT_STATE_CONNECTED_STANDBY) return name + "  ·  Standby";
         return name;
+    }
+
+    // ---------------------------------------------------------------- weather and now playing (ideas from Luma, MIT)
+
+    /** The next hours, or the next days; OK on any row switches. */
+    private void openWeather(boolean days) {
+        List<String[]> rows = weather.forecast(days);
+        beginMenu(P_CONTROL, rows.isEmpty() ? "Weather  ·  the forecast arrives with the next update"
+                : (days ? "Next days" : "Next hours") + "  ·  OK shows the " + (days ? "hours" : "days"));
+        for (String[] r : rows) addRow(r[0], r[1], () -> openWeather(!days), false);
+        showMenu(340);
+    }
+
+    /** The song (or show), its artwork and app, then Play or Pause, Next, Previous and Open. Follows the player live. */
+    private void openNowPlaying(MediaController s) {
+        beginMenu(P_CONTROL, "Now playing  ·  " + appLabel(s.getPackageName()));
+        LinearLayout head = new LinearLayout(this);
+        head.setGravity(Gravity.CENTER_VERTICAL);
+        head.setPadding(px(14), px(4), px(14), px(10));
+        ImageView art = new ImageView(this);
+        art.setScaleType(ImageView.ScaleType.CENTER_CROP);
+        art.setClipToOutline(true);
+        art.setBackground(rounded(theme.menuStroke, 0, 10));
+        head.addView(art, new LinearLayout.LayoutParams(px(64), px(64)));
+        LinearLayout words = new LinearLayout(this);
+        words.setOrientation(LinearLayout.VERTICAL);
+        words.setPadding(px(14), 0, 0, 0);
+        TextView title = menuText(17, theme.text, 600), artist = menuText(14, theme.text2, 400);
+        words.addView(title);
+        words.addView(artist);
+        head.addView(words, new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1));
+        menu.addView(head);
+
+        MediaController.TransportControls go = s.getTransportControls();
+        View play = addRow("", null, () -> { if (NowPlaying.playing(s)) go.pause(); else go.play(); }, true);
+        if (NowPlaying.can(s, PlaybackState.ACTION_SKIP_TO_NEXT)) addRow("Next", null, go::skipToNext, true);
+        if (NowPlaying.can(s, PlaybackState.ACTION_SKIP_TO_PREVIOUS)) addRow("Previous", null, go::skipToPrevious, true);
+        addRow("Open " + appLabel(s.getPackageName()), null, () -> {
+            android.app.PendingIntent player = s.getSessionActivity();
+            try {
+                if (player != null) { player.send(); return; }
+            } catch (android.app.PendingIntent.CanceledException ignored) { }
+            Intent app = pm.getLeanbackLaunchIntentForPackage(s.getPackageName());
+            if (app != null) start(app);
+        }, false);
+
+        Runnable fill = () -> {
+            title.setText(NowPlaying.title(s));
+            String a = NowPlaying.artist(s);
+            artist.setText(a);
+            artist.setVisibility(a.isEmpty() ? View.GONE : View.VISIBLE);
+            art.setImageBitmap(NowPlaying.art(s));
+            ((TextView) play.findViewById(R.id.input_label)).setText(NowPlaying.playing(s) ? "Pause" : "Play");
+        };
+        fill.run();
+        MediaController.Callback follow = new MediaController.Callback() {
+            @Override public void onMetadataChanged(MediaMetadata m) { update(); }
+            @Override public void onPlaybackStateChanged(PlaybackState p) { update(); }
+            @Override public void onSessionDestroyed() { if (head.isAttachedToWindow() && zone == Z_MENU) closeMenu(); }
+            private void update() {
+                if (head.isAttachedToWindow()) fill.run(); else s.unregisterCallback(this);  // the menu moved on
+            }
+        };
+        s.registerCallback(follow, new Handler(Looper.getMainLooper()));
+        menuClosed = () -> { s.unregisterCallback(follow); focusTop(P_CONTROL); };
+        showMenu(380);
+    }
+
+    private TextView menuText(int sp, int color, int weight) {
+        TextView t = new TextView(this);
+        t.setTextSize(sp);
+        t.setTextColor(color);
+        t.setSingleLine(true);
+        t.setEllipsize(android.text.TextUtils.TruncateAt.END);
+        t.setTypeface(getResources().getFont(R.font.outfit));
+        t.setFontVariationSettings("'wght' " + weight);
+        return t;
+    }
+
+    private String appLabel(String pkg) {
+        try { return String.valueOf(pm.getApplicationLabel(pm.getApplicationInfo(pkg, 0))); }
+        catch (PackageManager.NameNotFoundException e) { return pkg; }
+    }
+
+    private Devices identify(TvInputInfo device) {
+        int[] cec = Devices.cec(device);
+        return Devices.identify(label(device), cec[0], cec[1]);
     }
 
     // ---------------------------------------------------------------- live scores
@@ -2528,15 +2699,34 @@ public class HomeActivity extends Activity {
 
     private void openControlCenter() {
         beginMenu(P_CONTROL, "Control Center");
-        final View[] timer = new View[1];
-        timer[0] = addRow("Sleep timer", sleepStatus(), () -> {
-            if (!Sleep.available()) { needsTurnOffSetup(); return; }
-            Sleep.cycle(this);
-            setStatus(timer[0], sleepStatus());
-        }, true);
-        addRow("Turn off now", null, () -> { if (!Sleep.now()) needsTurnOffSetup(); }, false);
+        if (serviceStopped) addRow("Fix Home and Turn off", "switch Talkies off and on", () -> {
+            Toast.makeText(this, "Talkies → off, then on again", Toast.LENGTH_LONG).show();
+            start(new Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS));
+        }, false);
+        addRow("Talkies settings", null, () -> openTalkiesSettings(P_CONTROL), false);
+        MediaController playing = NowPlaying.current(this);
+        if (playing != null) addRow("Now playing", NowPlaying.title(playing), () -> openNowPlaying(playing), false);
+        if (weatherLine != null) addRow("Weather", weatherLine, () -> openWeather(false), false);
+        if (Sleep.SUPPORTED) {
+            final View[] timer = new View[1];
+            timer[0] = addRow("Sleep timer", sleepStatus(), () -> {
+                if (!Sleep.available()) { needsTurnOffSetup(); return; }
+                Sleep.cycle(this);
+                setStatus(timer[0], sleepStatus());
+            }, true);
+            addRow("Turn off now", null, () -> { if (!Sleep.now()) needsTurnOffSetup(); }, false);
+        }
         final View[] mem = new View[1];
         mem[0] = addRow("Free up memory", availableMb() + " MB free", () -> freeMemory(mem[0]), true);
+        addRow("Storage", storageLine(), () -> start(new Intent(Settings.ACTION_INTERNAL_STORAGE_SETTINGS)), false);
+        final View[] anim = new View[1];
+        anim[0] = addRow("Animations", animationLabel(), () -> {
+            if (!cycleAnimations()) {
+                Toast.makeText(this, "Needs the WRITE_SECURE_SETTINGS grant (see the README)", Toast.LENGTH_LONG).show();
+                return;
+            }
+            setStatus(anim[0], animationLabel());
+        }, true);
         addRow("Network", networkName(), () -> start(new Intent(Settings.ACTION_WIFI_SETTINGS)), false);
         final View[] speed = new View[1];
         speed[0] = addRow("Speed test", lastSpeed, () -> runSpeedTest(speed[0]), true);
@@ -2552,7 +2742,6 @@ public class HomeActivity extends Activity {
                 .setClassName("com.android.systemui", "com.android.systemui.Somnambulator")), false);
         // The TV's own power menu, so it still asks before restarting.
         addRow("Restart…", null, () -> { if (!SleepService.powerMenu()) needsTurnOffSetup(); }, false);
-        addRow("Talkies settings", null, () -> openTalkiesSettings(P_CONTROL), false);
         showMenu(350);
     }
 
@@ -2622,6 +2811,23 @@ public class HomeActivity extends Activity {
         }, true);
         // Switch between Talkies and another launcher with Android's Home app chooser.
         addRow("Home app", currentHomeName(), () -> start(new Intent(Settings.ACTION_HOME_SETTINGS)), false);
+        final View[] wp = new View[1];
+        wp[0] = addRow("Bing wallpaper", wallpaperLabel(), () -> {
+            if (ownWallpaper()) {
+                Toast.makeText(this, "Your own wallpaper.jpg is shown instead; delete it to use Bing's", Toast.LENGTH_LONG).show();
+                return;
+            }
+            boolean on = !prefs.getBoolean("bing_wallpaper", false);
+            prefs.edit().putBoolean("bing_wallpaper", on).apply();
+            if (on) bing.refreshIfStale(this::loadWallpaper); else { bing.clear(); loadWallpaper(); }
+            setStatus(wp[0], wallpaperLabel());
+        }, true);
+        final View[] anim = new View[1];
+        anim[0] = addRow("Apps open from their tile", prefs.getBoolean("open_animation", true) ? "On" : "Off", () -> {
+            boolean on = !prefs.getBoolean("open_animation", true);
+            prefs.edit().putBoolean("open_animation", on).apply();
+            setStatus(anim[0], on ? "On" : "Off");
+        }, true);
         // Off by default: looking a video up means sending its title and channel to YouTube.
         final View[] yt = new View[1];
         yt[0] = addRow("Sharp YouTube pictures", prefs.getBoolean("youtube_art", false) ? "On" : "Off", () -> {
@@ -2632,6 +2838,18 @@ public class HomeActivity extends Activity {
         }, true);
         addRow("About", null, this::openAbout, false);
         showMenu(350);
+    }
+
+    private boolean ownWallpaper() {
+        File dir = getExternalFilesDir(null);
+        if (dir == null) return false;
+        for (String n : new String[]{"wallpaper.jpg", "wallpaper.png", "wallpaper.webp"}) if (new File(dir, n).isFile()) return true;
+        return false;
+    }
+
+    private String wallpaperLabel() {
+        if (ownWallpaper()) return "Your picture instead";
+        return prefs.getBoolean("bing_wallpaper", false) ? "Picture of the day" : "Off";
     }
 
     /** After a restart only (the default), or every time the TV wakes from standby too. */
@@ -2667,6 +2885,8 @@ public class HomeActivity extends Activity {
         notice.getLayoutParams().height = ViewGroup.LayoutParams.WRAP_CONTENT;
         notice.setPadding(notice.getPaddingLeft(), px(8), notice.getPaddingRight(), px(8));
         for (String[] c : credits) addRow(c[0], c[1], () -> { }, true);
+        String caption = bing.caption();
+        if (prefs.getBoolean("bing_wallpaper", false) && caption != null) addRow("Wallpaper", "Bing: " + caption, () -> { }, true);
         showMenu(720);
     }
 
@@ -2716,6 +2936,7 @@ public class HomeActivity extends Activity {
         moveHint.setAlpha(0f);
         moveHint.setVisibility(View.VISIBLE);
         moveHint.animate().alpha(1f).setDuration(150).start();
+        showServiceNote();
     }
 
     /** Swaps the picked-up channel with the one above or below. */
@@ -2751,7 +2972,7 @@ public class HomeActivity extends Activity {
             fillChannelsMenu();
             focusMenu(Math.min(at, menuItems.size() - 1));
         }
-        moveHint.animate().alpha(0f).setDuration(120).withEndAction(() -> moveHint.setVisibility(View.GONE)).start();
+        moveHint.animate().alpha(0f).setDuration(120).withEndAction(() -> { moveHint.setVisibility(View.GONE); showServiceNote(); }).start();
     }
 
     private String currentHomeName() {
@@ -2780,6 +3001,45 @@ public class HomeActivity extends Activity {
         ActivityManager.MemoryInfo mi = new ActivityManager.MemoryInfo();
         am.getMemoryInfo(mi);
         return mi.availMem / (1024 * 1024);
+    }
+
+    /** "12.4 GB free of 32 GB": the TV's own storage, where apps and their data live. */
+    private String storageLine() {
+        try {
+            android.os.StatFs fs = new android.os.StatFs(android.os.Environment.getDataDirectory().getPath());
+            return String.format(java.util.Locale.getDefault(), "%.1f GB free of %d GB",
+                    fs.getAvailableBytes() / 1e9, Math.round(fs.getTotalBytes() / 1e9));
+        } catch (RuntimeException e) {
+            return null;
+        }
+    }
+
+    /**
+     * Control Center → Animations: the speed of every animation on the TV, 1× → 0.5× → Off. Faster makes menus and
+     * app switches feel snappier; Off also stills Talkies' own motion. Needs the WRITE_SECURE_SETTINGS grant (the same
+     * one that repairs a stopped service). An idea from GlassLauncher (MIT).
+     */
+    private static final String[] ANIM_KEYS = {Settings.Global.WINDOW_ANIMATION_SCALE,
+            Settings.Global.TRANSITION_ANIMATION_SCALE, Settings.Global.ANIMATOR_DURATION_SCALE};
+
+    private float animationScale() {
+        return Settings.Global.getFloat(getContentResolver(), Settings.Global.ANIMATOR_DURATION_SCALE, 1f);
+    }
+
+    private String animationLabel() {
+        float s = animationScale();
+        return s == 0f ? "Off" : s == 0.5f ? "0.5×" : s == 1f ? "1×" : s + "×";
+    }
+
+    private boolean cycleAnimations() {
+        if (checkSelfPermission(android.Manifest.permission.WRITE_SECURE_SETTINGS) != PackageManager.PERMISSION_GRANTED) return false;
+        float s = animationScale(), next = s >= 1f ? 0.5f : s > 0f ? 0f : 1f;
+        try {
+            for (String k : ANIM_KEYS) Settings.Global.putFloat(getContentResolver(), k, next);
+            return true;
+        } catch (SecurityException e) {
+            return false;
+        }
     }
 
     /** A soundbar or receiver on HDMI ARC/eARC takes over the TV's sound while connected. */
@@ -2827,13 +3087,19 @@ public class HomeActivity extends Activity {
                 File c = new File(dir, name);
                 if (c.isFile()) { f = c; break; }
             }
+            // No picture of your own: Bing's, when that's on.
+            File b = new File(dir, Bing.FILE);
+            if (f == null && prefs.getBoolean("bing_wallpaper", false) && b.isFile()) f = b;
         }
         long stamp = f == null ? 0 : f.lastModified() ^ f.length();
         if (stamp == wallpaperStamp) return;
         wallpaperStamp = stamp;
         hasWallpaper = f != null;
         if (f == null) {
+            wallFit = null;
             backdrop.setWallpaper(null);
+            day = isDayNow();
+            applyTheme();
             updateAmbient();
             return;
         }
@@ -2845,7 +3111,13 @@ public class HomeActivity extends Activity {
         o.inJustDecodeBounds = false;
         o.inPreferredConfig = Bitmap.Config.RGB_565;
         Bitmap bmp = BitmapFactory.decodeFile(f.getPath(), o);
-        if (bmp != null) backdrop.setWallpaper(bmp);
+        if (bmp != null) {
+            wallFit = Legibility.of(bmp, Theme.of(false).scrimTop & 0x00FFFFFF, Theme.of(true).scrimTop & 0x00FFFFFF);
+            backdrop.setWallpaper(bmp);
+            // A new photo may suit the other look (Auto), and always needs its own veil.
+            day = isDayNow();
+            applyTheme();
+        }
     }
 
     // ---------------------------------------------------------------- lifecycle
@@ -2930,7 +3202,45 @@ public class HomeActivity extends Activity {
         tabs[2].setText("New in " + Region.name(Region.country(this)));  // the country can change (Region)
         inFront = true;
         root.post(this::snapRing);
+        // Give Android time to bind the service after Talkies (re)starts before calling it stopped.
+        root.removeCallbacks(checkService);
+        root.postDelayed(checkService, 6000);
         refreshOnline();   // back on the home screen: catch up on anything that went stale meanwhile
+    }
+
+    /** Is the accessibility service down when it should be up? Switch it off and on if we may; else say so. */
+    private final Runnable checkService = () -> {
+        boolean stopped = ServiceRepair.stopped(this, SleepService.class);
+        if (stopped && !rebindTried && ServiceRepair.canRepair(this)) {
+            rebindTried = true;
+            ServiceRepair.rebind(this, SleepService.class);
+            root.postDelayed(this.checkService, 5000);
+            return;
+        }
+        if (!stopped) rebindTried = false;
+        serviceStopped = stopped;
+        showServiceNote();
+    };
+
+    private void showServiceNote() {
+        boolean show = serviceStopped && moveHint.getVisibility() != View.VISIBLE;
+        if (serviceNote == null) {
+            if (!show) return;
+            serviceNote = new TextView(this);
+            serviceNote.setText("Home, Turn off and Remote keys stopped working  ·  Control Center → Fix");
+            serviceNote.setTextSize(13);
+            serviceNote.setTypeface(getResources().getFont(R.font.outfit));
+            serviceNote.setGravity(android.view.Gravity.CENTER);
+            serviceNote.setPadding(px(16), 0, px(16), 0);
+            FrameLayout.LayoutParams lp = new FrameLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, px(28),
+                    android.view.Gravity.TOP | android.view.Gravity.CENTER_HORIZONTAL);
+            lp.topMargin = px(6);
+            ViewGroup parent = (ViewGroup) moveHint.getParent();
+            parent.addView(serviceNote, parent.indexOfChild(moveHint), lp);
+        }
+        serviceNote.setTextColor(theme.text);
+        serviceNote.setBackground(rounded(theme.menuBg, theme.menuStroke, 14));
+        serviceNote.setVisibility(show ? View.VISIBLE : View.GONE);
     }
 
     @Override
@@ -2953,6 +3263,7 @@ public class HomeActivity extends Activity {
         if (!scores().equals("off") && !scores().equals("football")) cricket.refreshIfStale(this::onMatches);
         if (scores().equals("both") || scores().equals("football")) football.refreshIfStale(this::onFootball);
         weather.refreshIfStale(this::onWeather);
+        if (prefs.getBoolean("bing_wallpaper", false)) bing.refreshIfStale(this::loadWallpaper);
         if (forYou) trending.refreshIfStale(this::onPicks);
         if (prefs.getBoolean("youtube_art", false)) RecentStore.upgradeArtwork(this, () -> {
             // Sharper YouTube pictures arrived: redraw Continue and the Watch Next row.

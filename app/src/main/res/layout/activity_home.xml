@@ -31,7 +31,6 @@
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:fontFamily="@font/outfit"
-                android:fontVariationSettings="'wght' 600"
                 android:includeFontPadding="false"
                 android:letterSpacing="-0.015"
                 android:text="For You"
@@ -78,7 +77,6 @@
                 android:layout_height="wrap_content"
                 android:layout_marginTop="9dp"
                 android:fontFamily="@font/outfit"
-                android:fontVariationSettings="'wght' 400"
                 android:singleLine="true"
                 android:textSize="13sp" />
         </LinearLayout>
@@ -92,7 +90,6 @@
             android:layout_marginTop="72dp"
             android:layout_marginEnd="40dp"
             android:fontFamily="@font/outfit"
-            android:fontVariationSettings="'wght' 500"
             android:singleLine="true"
             android:textSize="13sp"
             android:visibility="gone" />
@@ -122,7 +119,6 @@
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:fontFamily="@font/outfit"
-                android:fontVariationSettings="'wght' 500"
                 android:letterSpacing="0.14"
                 android:singleLine="true"
                 android:textAllCaps="true"
@@ -139,7 +135,6 @@
                     android:layout_height="wrap_content"
                     android:layout_marginStart="-2dp"
                     android:fontFamily="@font/outfit"
-                    android:fontVariationSettings="'wght' 400"
                     android:includeFontPadding="false"
                     android:singleLine="true"
                     android:textSize="42sp" />
@@ -151,7 +146,6 @@
                     android:layout_marginStart="6dp"
                     android:layout_marginBottom="5dp"
                     android:fontFamily="@font/outfit"
-                    android:fontVariationSettings="'wght' 500"
                     android:singleLine="true"
                     android:textAllCaps="true"
                     android:textSize="15sp" />
@@ -166,7 +160,6 @@
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:fontFamily="@font/outfit"
-                    android:fontVariationSettings="'wght' 500"
                     android:letterSpacing="0.14"
                     android:singleLine="true"
                     android:textAllCaps="true"
@@ -219,7 +212,6 @@
             android:layout_marginStart="40dp"
             android:layout_marginTop="566dp"
             android:fontFamily="@font/outfit"
-            android:fontVariationSettings="'wght' 600"
             android:text="All apps"
             android:textSize="20sp" />
 
@@ -249,7 +241,6 @@
         android:layout_gravity="top|center_horizontal"
         android:layout_marginTop="6dp"
         android:fontFamily="@font/outfit"
-        android:fontVariationSettings="'wght' 450"
         android:gravity="center"
         android:paddingStart="16dp"
         android:paddingEnd="16dp"

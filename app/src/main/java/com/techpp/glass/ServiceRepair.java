@@ -100,6 +100,53 @@ final class ServiceRepair {
         }
     }
 
+    /**
+     * The service should be running but isn't: it's on the TV's Accessibility list (or was, until a force stop took
+     * it off) and Android hasn't bound it. Then Home, Turn off and Remote keys quietly stop working, while the switch
+     * may still look on. (An idea from Matinee 1.6.1, MIT.)
+     */
+    static boolean stopped(Context c, Class<?> service) {
+        if (SleepService.isRunning()) return false;
+        return listed(c, service) || prefs(c).contains(service.getName());
+    }
+
+    private static boolean listed(Context c, Class<?> service) {
+        String list = Settings.Secure.getString(c.getContentResolver(), Settings.Secure.ENABLED_ACCESSIBILITY_SERVICES);
+        if (list == null) return false;
+        ComponentName me = new ComponentName(c, service);
+        for (String entry : list.split(":")) if (me.equals(ComponentName.unflattenFromString(entry))) return true;
+        return false;
+    }
+
+    /**
+     * A listed service that Android stopped binding (it crashed, or the process was reclaimed): take it off the list and
+     * put it back, as switching it off and on does. Only with WRITE_SECURE_SETTINGS; off the main thread.
+     */
+    static void rebind(Context context, Class<?> service) {
+        if (!canRepair(context)) return;
+        if (!listed(context, service)) { restore(context); return; }
+        ContentResolver cr = context.getContentResolver();
+        String with = Settings.Secure.getString(cr, Settings.Secure.ENABLED_ACCESSIBILITY_SERVICES);
+        ComponentName me = new ComponentName(context, service);
+        StringBuilder without = new StringBuilder();
+        for (String entry : with.split(":")) {
+            if (entry.isEmpty() || me.equals(ComponentName.unflattenFromString(entry))) continue;
+            if (without.length() > 0) without.append(':');
+            without.append(entry);
+        }
+        Log.i(TAG, "Accessibility service listed but not running: switching it off and on");
+        new Thread(() -> {
+            try {
+                if (!replaceList(cr, with, without.toString())) return;
+                Thread.sleep(1000);
+                if (!replaceList(cr, without.toString(), with)) return;
+                Settings.Secure.putInt(cr, Settings.Secure.ACCESSIBILITY_ENABLED, 1);
+            } catch (RuntimeException | InterruptedException e) {
+                Log.w(TAG, "Couldn't switch the service off and on: " + e);
+            }
+        }, "ServiceRebind").start();
+    }
+
     private static boolean replaceList(ContentResolver cr, String expected, String updated) {
         String now = Settings.Secure.getString(cr, Settings.Secure.ENABLED_ACCESSIBILITY_SERVICES);
         return Objects.equals(now == null ? "" : now, expected == null ? "" : expected)

@@ -3,6 +3,32 @@
 Versions are numbered *major.minor.fix*. While Talkies is in beta they start with 0: a new minor number brings new
 features, a new fix number only fixes. The version shows in Talkies settings → About.
 
+## 0.4.0 — 28 October 2026
+
+### New
+- **Bing wallpaper** (Talkies settings, off by default): Bing's picture of the day, with its credit in About.
+- **Apps open from their tile**: an app grows out of the tile or card you chose (Talkies settings, on by default).
+- **Now playing** in Control Center: the song or show playing on the TV, with artwork, Play / Pause, Next, Previous
+  and Open. An idea from Luma.
+- **Weather forecast** in Control Center: the next hours, and OK again for the next days.
+- **Inputs know your consoles**: a PlayStation, Xbox, Switch, Apple TV, Fire TV or SHIELD shows under its real name,
+  with a dot in its brand's colour (Luma's device list, MIT).
+- **Proper tiles for apps without a TV banner**: the logo on its own colour, or the logo and name on white, instead of
+  a small icon on a blank card (GlassLauncher's tile builder, MIT).
+- **Animations** in Control Center: 1×, 0.5× or Off for the whole TV (with the `WRITE_SECURE_SETTINGS` grant).
+- **Storage** in Control Center: free space at a glance. Both ideas from GlassLauncher.
+- **A stopped Home service is noticed.** If Android stops Talkies' accessibility service, Talkies switches it off and
+  on itself (with the `WRITE_SECURE_SETTINGS` grant), or says so on the home screen and in Control Center.
+
+### Changed
+- **Runs on Android 8.0 and later** (it needed Android 11). On Android 8, the Sleep timer and Turn off now are hidden,
+  since standby needs Android 9. Untested on those versions so far.
+- **Text stays readable on a wallpaper.** Talkies measures the photo and adds just enough veil behind the text for
+  4.5:1 contrast, top to bottom; with Appearance on Auto it picks the light or dark look, whichever suits the photo.
+- Talkies settings is the first row of Control Center.
+- A stronger focus ring, with a soft halo, so the selected tile is easy to see from the sofa.
+- Channel cards show what you watched last first, for apps that say when (Nuvio does).
+
 ## 0.3.0 — 28 October 2026
 
 ### New

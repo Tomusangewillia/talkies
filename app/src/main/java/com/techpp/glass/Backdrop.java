@@ -27,6 +27,7 @@ public class Backdrop extends View {
     private Bitmap image, cur, prev;
     private boolean wallpaper;
     private float imageAlpha;
+    private int[] scrimStops;   // with a wallpaper: the veil Legibility worked out, top to bottom (null: the theme's)
     private int glow;           // with For You hidden: a soft glow in the focused app's colour (0: none)
     private boolean day;
     private long fadeStart;
@@ -62,6 +63,12 @@ public class Backdrop extends View {
         image = null;
         glow = color;
         compose(true);
+    }
+
+    /** The veil over a wallpaper as evenly spaced colours, top to bottom; null for the theme's own three. */
+    void setScrimStops(int[] colors) {
+        scrimStops = colors;
+        compose(false);
     }
 
     /** Your own wallpaper, or null to go back to the picks' images. */
@@ -100,7 +107,8 @@ public class Backdrop extends View {
                 c.drawRect(0, 0, w, h, p);
             }
         }
-        p.setShader(new LinearGradient(0, 0, 0, h, new int[]{scrimTop, scrimMid, scrimBottom}, null, Shader.TileMode.CLAMP));
+        int[] scrim = wallpaper && scrimStops != null ? scrimStops : new int[]{scrimTop, scrimMid, scrimBottom};
+        p.setShader(new LinearGradient(0, 0, 0, h, scrim, null, Shader.TileMode.CLAMP));
         c.drawRect(0, 0, w, h, p);
         prev = fade && cur != null ? cur : null;
         cur = out;

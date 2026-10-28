@@ -46,7 +46,17 @@ final class AppEntry {
         banner = sharpBanner(pm);
         if (banner == null) banner = info.loadBanner(pm);
         if (banner == null) banner = info.applicationInfo.loadBanner(pm);
-        if (banner == null) icon = info.loadIcon(pm);
+        if (banner == null) {
+            // No banner: a tile made from the icon (Tiles); the plain icon only if that fails.
+            icon = info.loadIcon(pm);
+            try {
+                Bitmap tile = Tiles.make(icon, label, bannerW, bannerH);
+                tile.setDensity(android.util.DisplayMetrics.DENSITY_DEFAULT);
+                banner = new android.graphics.drawable.BitmapDrawable(null, tile);
+            } catch (RuntimeException e) {
+                banner = null;
+            }
+        }
     }
 
     /**

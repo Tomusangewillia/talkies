@@ -11,10 +11,10 @@ export JAVA_HOME="${JAVA_HOME:-/opt/homebrew/opt/openjdk@17/libexec/openjdk.jdk/
 export ANDROID_HOME="${ANDROID_HOME:-/opt/homebrew/share/android-commandlinetools}"
 
 adb connect "$DEV" >/dev/null || true
-# Talkies needs Android 11 (API 30) or newer; say so before building rather than failing at install.
+# Talkies needs Android 8.0 (API 26) or newer; say so before building rather than failing at install.
 SDK="$(adb -s "$DEV" shell -n getprop ro.build.version.sdk | tr -d '\r')"
-if [ -n "$SDK" ] && [ "$SDK" -lt 30 ]; then
-  echo "!! This TV runs Android API $SDK; Talkies needs API 30 (Android 11) or newer." >&2
+if [ -n "$SDK" ] && [ "$SDK" -lt 26 ]; then
+  echo "!! This TV runs Android API $SDK; Talkies needs API 26 (Android 8.0) or newer." >&2
   exit 1
 fi
 

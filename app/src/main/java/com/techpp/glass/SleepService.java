@@ -77,7 +77,7 @@ public class SleepService extends AccessibilityService {
     static boolean isRunning() { return running != null; }
 
     static boolean lock() {
-        return running != null && running.performGlobalAction(GLOBAL_ACTION_LOCK_SCREEN);
+        return Sleep.SUPPORTED && running != null && running.performGlobalAction(GLOBAL_ACTION_LOCK_SCREEN);
     }
 
     /** The TV's own power menu (Restart, and Power off on most TVs); it asks before it acts. */

@@ -63,7 +63,8 @@ final class Weather {
         // Running set-location.sh again (even with the same place) rewrites the file: fetch right away.
         long stamp = new File(ctx.getExternalFilesDir(null), "location.txt").lastModified();
         boolean moved = !area.equals(prefs.getString("area", null)) || stamp != prefs.getLong("file_at", 0)
-                || !unit().equals(prefs.getString("unit", "C"));  // the TV now in a °F country, or back
+                || !unit().equals(prefs.getString("unit", "C"))  // the TV now in a °F country, or back
+                || !prefs.contains("hours_at");  // saved before Talkies kept the forecast this way
         prefs.edit().putLong("file_at", stamp).apply();
         if (!moved && (now - prefs.getLong("ok_at", 0) < REFRESH_MS || now - prefs.getLong("try_at", 0) < RETRY_MS)) return;
         prefs.edit().putLong("try_at", now).apply();
@@ -139,8 +140,10 @@ final class Weather {
     private String observe(double lat, double lon) throws Exception {
         JSONObject forecast = get(String.format(Locale.US,
                 "https://api.open-meteo.com/v1/forecast?latitude=%.4f&longitude=%.4f&current=temperature_2m,weather_code,is_day"
-                        + "&daily=sunrise,sunset&timezone=auto&forecast_days=1", lat, lon));
+                        + "&hourly=temperature_2m,weather_code,is_day&forecast_hours=12"
+                        + "&daily=sunrise,sunset,weather_code,temperature_2m_max,temperature_2m_min&timezone=auto&forecast_days=6", lat, lon));
         JSONObject here = forecast.getJSONObject("current");
+        saveForecast(forecast);
         // Today's sunrise and sunset ("2026-10-21T06:07"), for the launcher's automatic day/night look.
         JSONObject daily = forecast.optJSONObject("daily");
         if (daily != null) {
@@ -153,6 +156,66 @@ final class Weather {
         JSONObject station = nearestReport(lat, lon);
         if (station == null) return line(here.getDouble("temperature_2m"), condition, null);
         return line(station.getDouble("temp"), condition, null);  // the station is named in the log, not on screen
+    }
+
+    /**
+     * Control Center → Weather: the next hours or the next days, as {when, what} rows ("3 PM", "30° Showers";
+     * "Thu", "31° / 22°  Rain"). Empty until the first fetch. An idea from Luma (MIT).
+     */
+    java.util.List<String[]> forecast(boolean days) {
+        java.util.List<String[]> out = new ArrayList<>();
+        if (cached() == null) return out;
+        java.text.DateFormat hour = android.text.format.DateFormat.is24HourFormat(ctx)
+                ? new java.text.SimpleDateFormat("HH:mm", Locale.getDefault()) : new java.text.SimpleDateFormat("h a", Locale.getDefault());
+        long now = System.currentTimeMillis();
+        for (String row : prefs.getString(days ? "days" : "hours", "").split("\n")) {
+            String[] f = row.split("\t");
+            if (f.length != 2) continue;
+            if (!days) {
+                // Hours are kept as their start time: one that has begun is no longer "next".
+                long at;
+                try { at = Long.parseLong(f[0]); } catch (NumberFormatException e) { continue; }
+                if (at <= now) continue;
+                f[0] = hour.format(new java.util.Date(at));
+            }
+            out.add(f);
+            if (!days && out.size() == 6) break;
+        }
+        return out;
+    }
+
+    /** Keeps the forecast ready-made, so Control Center shows it at once and offline. */
+    private void saveForecast(JSONObject forecast) {
+        StringBuilder hours = new StringBuilder(), days = new StringBuilder();
+        try {
+            java.text.SimpleDateFormat in = new java.text.SimpleDateFormat("yyyy-MM-dd'T'HH:mm", Locale.US),
+                    day = new java.text.SimpleDateFormat("yyyy-MM-dd", Locale.US);
+            in.setTimeZone(java.util.TimeZone.getTimeZone(forecast.optString("timezone", "UTC")));  // the place's local times
+            java.text.DateFormat weekday = new java.text.SimpleDateFormat("EEEE", Locale.getDefault());
+            JSONObject h = forecast.getJSONObject("hourly");
+            JSONArray t = h.getJSONArray("time"), temp = h.getJSONArray("temperature_2m"), code = h.getJSONArray("weather_code"),
+                    isDay = h.getJSONArray("is_day");
+            for (int i = 0; i < t.length(); i++) {
+                hours.append(in.parse(t.getString(i)).getTime()).append('\t')
+                        .append(degrees(temp.getDouble(i))).append(' ').append(wmoCondition(code.getInt(i), isDay.optInt(i, 1) == 1)).append('\n');
+            }
+            JSONObject d = forecast.getJSONObject("daily");
+            JSONArray dt = d.getJSONArray("time"), max = d.getJSONArray("temperature_2m_max"), min = d.getJSONArray("temperature_2m_min"),
+                    dc = d.getJSONArray("weather_code");
+            for (int i = 0; i < dt.length(); i++) {
+                String when = i == 0 ? "Today" : i == 1 ? "Tomorrow" : weekday.format(day.parse(dt.getString(i)));
+                days.append(when).append('\t').append(degrees(max.getDouble(i))).append(" / ").append(degrees(min.getDouble(i)))
+                        .append("  ").append(wmoCondition(dc.getInt(i), true)).append('\n');
+            }
+        } catch (Exception e) {
+            Log.w(TAG, "No forecast: " + e);
+        }
+        prefs.edit().putString("hours", hours.toString()).putString("days", days.toString()).putBoolean("hours_at", true).apply();
+    }
+
+    /** "31°", in Fahrenheit where that's the custom. */
+    private String degrees(double c) {
+        return Math.round(Region.fahrenheit(Region.country(ctx)) ? c * 9 / 5 + 32 : c) + "°";
     }
 
     /** The closest airport report from the last two hours within about 200 km, or null. */

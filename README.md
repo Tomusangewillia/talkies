@@ -7,7 +7,7 @@ A small, ad-free home screen for Android TV and Google TV: one calm screen, ligh
 launcher); it adapts to the TV's country (picks, cricket, °C or °F) and screen, but other TVs and countries haven't
 been tested.
 
-**Version 0.3.0** (beta). What changed in each version: [CHANGELOG.md](CHANGELOG.md).
+**Version 0.4.0** (beta). What changed in each version: [CHANGELOG.md](CHANGELOG.md).
 
 Talkies only replaces the home screen: it doesn't remove the TV maker's apps, ads services or tracking. To do that
 too, use [CleanYourTV](https://github.com/Gathin23/cleanyourtv) first; Talkies works alongside it.
@@ -15,11 +15,13 @@ too, use [CleanYourTV](https://github.com/Gathin23/cleanyourtv) first; Talkies w
 - Top left, the weather, then the time and date ("22° OVERCAST", "11:10 PM | WEDNESDAY 21 OCTOBER")
 - **For You** below it: three tabs (Continue, Trending, New in *your country*) and a row of picks, the current pick large with
   a one-line description ("Film · Comedy · Hindi · Netflix"), the next ones small beside it. It can be hidden, and the clock then grows
-- Round icon buttons top right: **Control Center**, **Inputs** (HDMI 1–3 with the plugged-in device's own name and
-  whether it's on or in standby over HDMI-CEC, e.g. "Amazon FireTV · Standby"; AV, Live TV), **Wi-Fi**, **Settings**,
+- Round icon buttons top right: **Control Center**, **Inputs** (HDMI 1–3 with the plugged-in device and whether it's on
+  or in standby over HDMI-CEC, under the name it's known by, e.g. "Fire TV · Standby" or "PlayStation 5 · On", with a dot
+  in the brand's colour; AV, Live TV), **Wi-Fi**, **Settings**,
   and a **bell** that appears only while the Play Store has app updates waiting (OK opens them in the Play Store),
   with the cricket score under them
-- A dock of seven apps in one frosted band
+- A dock of seven apps in one frosted band. An app with no TV banner gets a tile made from its icon: its logo on its
+  own colour, or its logo and name on white, like a TV banner
 - **Channels** below the dock, like Projectivy: rows your apps publish (JioHotstar's Top Picks, Netflix, YouTube's
   Recommended, Prime Video…) and Watch Next; you choose which and their order
 - **Cricket**: a live score under the icons and a Cricket row above the channels, for international matches and
@@ -57,7 +59,7 @@ app, under the screensaver or in standby. Coming back to the home screen fetches
 
 | | |
 |---|---|
-| **The TV** | Android TV or Google TV, **Android 11 (API 30) or newer**. The install script checks this before building. Built and tested on a OnePlus TV with Google TV; other TVs should work but haven't been tried. Samsung, LG, Roku and other TVs that don't run Android can't use Talkies; CleanYourTV's [guide for those TVs](https://cleanyour.tv/not-android) turns off their tracking with the remote. |
+| **The TV** | Android TV or Google TV, **Android 8.0 (API 26) or newer**. The install script checks this before building. Built and tested on a OnePlus TV with Google TV (Android 11); other TVs and older Android versions should work but haven't been tried. On Android 8, Control Center has no Sleep timer or Turn off now: putting the TV in standby needs Android 9. Samsung, LG, Roku and other TVs that don't run Android can't use Talkies; CleanYourTV's [guide for those TVs](https://cleanyour.tv/not-android) turns off their tracking with the remote. |
 | **A computer** | On the same Wi-Fi as the TV. macOS or Linux run the scripts as they are; on Windows use WSL, or the commands under *Install by hand*. |
 | **Tools** | `adb` (Android platform tools), JDK 17, and the Android SDK command-line tools with platform 35. |
 
@@ -266,7 +268,8 @@ adb -s "$TALKIES_TV" shell rm -rf /sdcard/Android/data/com.techpp.glass/files/re
 ## Channels
 
 Rows below the dock, read from the channels your apps publish to Android TV (the same ones Projectivy shows), plus
-**Watch Next**. Each row shows up to 15 cards; the focused card's title and description appear under it, and **OK**
+**Watch Next**. Each row shows up to 15 cards, the one you watched last first when the app says when (Nuvio does;
+others keep their own order); the focused card's title and description appear under it, and **OK**
 opens that title in its app (for example a JioHotstar card opens that film's page). Rows refresh whenever the home
 screen opens.
 
@@ -345,20 +348,25 @@ the score and the minute ("LIVE · Premier League · 67'"), kick-off time ("star
 ## Control Center
 
 Go up to the icon buttons and choose the first one (sliders). It has what you reach for while watching; everything
-you set once is in **Talkies settings**, its last row.
+you set once is in **Talkies settings**, at the top.
 
 | Row | What OK does |
 |---|---|
+| Fix Home and Turn off | Only when Talkies' accessibility service has stopped (see below): opens Accessibility, where you switch Talkies off and on |
+| Talkies settings | Opens Talkies settings (below) |
+| Now playing | Only while an app plays (or has paused) something: the song or show, its artwork, artist and app, then **Pause** / **Play**, **Next**, **Previous** (when the app allows skipping) and **Open** the app. It follows the player as tracks change |
+| Weather | The current weather on the right; OK shows the next six hours, and OK again the next six days (high / low and conditions) |
 | Sleep timer | Cycles Off → 30 → 60 → 90 min; the time left shows on the right. A minute before, a card counts down over whatever is playing: **OK** gives 15 more minutes |
 | Turn off now | Puts the TV in standby |
 | Free up memory | Stops background apps (never system apps) and shows how much RAM came back |
+| Storage | Shows the free space ("12.4 GB free of 32 GB"); OK opens the TV's storage settings |
+| Animations | Cycles the speed of every animation on the TV: 1× → 0.5× → Off. Faster makes menus and app switches feel snappier; Off also stills Talkies' own motion. Needs the `WRITE_SECURE_SETTINGS` grant (see *Google Assistant*) |
 | Network | Shows the Wi-Fi name (or Ethernet); OK opens Wi-Fi settings |
 | Speed test | A few seconds' download from Cloudflare's speed test; shows e.g. "206 Mbps" |
 | Bluetooth | Shows the connected speaker or headphones. OK lists your paired ones: OK on one connects or disconnects it; **Pair a new device** opens the TV's Bluetooth settings. Bluetooth can't be turned off here, since many remotes use it |
 | Sound output | Shows TV speakers or Soundbar (HDMI ARC) and opens the TV's Sound settings |
 | Screensaver | Starts the TV's screensaver right away |
 | Restart… | Opens the TV's own power menu, which asks before restarting. On some TVs (OnePlus) that menu puts the TV to sleep after 10 seconds if you choose nothing; Back closes it |
-| Talkies settings | Opens Talkies settings (below) |
 
 ## Talkies settings
 
@@ -366,7 +374,7 @@ Control Center → **Talkies settings**, or **hold OK on the ⚙ icon** (a press
 
 | Row | What OK does |
 |---|---|
-| Appearance | Cycles Auto (light by day, dark at night) → Light → Dark |
+| Appearance | Cycles Auto (light by day, dark at night) → Light → Dark. With a wallpaper, Auto picks the look that suits the photo instead, and every look adds just enough veil behind the text to keep it readable |
 | For You | Shown or Hidden. Hidden removes the tabs and picks (the weather, time and date stay, larger), Up from the dock goes to the icons, and TMDB picks aren't fetched |
 | Live scores | Cricket and football (default), Cricket, Football or Off: what the score line and the score rows show |
 | Football leagues | The leagues the Football row follows; see *Football* |
@@ -377,6 +385,8 @@ Control Center → **Talkies settings**, or **hold OK on the ⚙ icon** (a press
 | Network debugging | "On · port 5555" while computers on your network can control the TV over ADB (how Talkies was installed). **Turn off** (needs the permission below) or open Developer options; turning it on again is done in Developer options |
 | Talkies at power-on | **After a restart** (default), or **Every time**: also when the TV wakes from standby into the last HDMI input or app. Pressing a button as it wakes keeps what's on screen |
 | Empty inputs | **Shown** (default), or **Under More inputs**: Inputs lists only ports with something plugged in, and a More inputs row brings back the rest |
+| Bing wallpaper | Off by default. On: Bing's picture of the day as the wallpaper, checked every few hours while Talkies is in front (Talkies settings → About credits the photo). Your own `wallpaper.jpg` wins over it |
+| Apps open from their tile | On by default: an app's window grows out of the tile or card you chose. It's Android's normal opening animation, started from the tile, so it costs nothing extra |
 | Home app | Shows the current home screen and opens Android's *Default home app* chooser (on Google TV the choice doesn't stick; see *Use another home screen*) |
 | Sharp YouTube pictures | Off by default. On: YouTube cards in Continue get YouTube's 1280-pixel thumbnails, looked up by title and channel |
 | About | Credits for the data and code Talkies uses |
@@ -386,6 +396,11 @@ launcher turns the TV off through a small accessibility service. The same servic
 search when a Cricket card has no direct link. It only sees JioHotstar's screen, only acts for 30 seconds after you
 pick a card, and only looks for the search box. Switch it on once at **Settings → Device Preferences → Accessibility →
 Talkies**. Until then, choosing Turn off or the sleep timer takes you to that screen.
+
+**If the service stops:** Android can stop the service (a crash, or memory running low) while its switch still looks
+on, and then Home, Turn off and Remote keys quietly stop working. Talkies checks a few seconds after it opens: with
+the `WRITE_SECURE_SETTINGS` grant (see *Google Assistant*) it switches the service off and on itself; without it, a
+note at the top of the home screen says so, and Control Center gets a **Fix Home and Turn off** row.
 
 ## Use another home screen
 
@@ -496,7 +511,8 @@ Copy an image to the launcher's folder on the TV. It can be `wallpaper.jpg`, `wa
 adb -s "$TALKIES_TV" push my-picture.jpg /sdcard/Android/data/com.techpp.glass/files/wallpaper.jpg
 ```
 
-Press Home on the remote to see it. It replaces the app-colour glow.
+Press Home on the remote to see it. It replaces the app-colour glow. No computer? Talkies settings → **Bing
+wallpaper** uses Bing's picture of the day instead (your own picture wins when both are there).
 To go back to pure black, delete the file:
 
 ```bash
@@ -534,7 +550,7 @@ adb -s "$TALKIES_TV" shell pm grant com.techpp.glass android.permission.WRITE_SE
 Then, if a force stop switches the service off, Talkies switches it back on the next time it starts (you open it
 from Google TV's apps, the TV restarts, or it's updated). It only does that if the service was on when it was killed;
 if you switch it off yourself, it stays off. The same permission lets Talkies settings → Network debugging turn
-debugging off. It's a powerful permission (an app holding it can change system settings), so it's your call;
+debugging off, and Control Center → Animations change the TV's animation speed. It's a powerful permission (an app holding it can change system settings), so it's your call;
 `adb shell pm revoke com.techpp.glass android.permission.WRITE_SECURE_SETTINGS` takes it back.
 
 Remote buttons and Home are seen by the service only from a real remote: keys sent with `adb shell input keyevent`
@@ -570,7 +586,7 @@ adb -s "$TALKIES_TV" shell cmd package set-home-activity --user 0 com.techpp.gla
 | **No picks** under Trending | No TMDB key (`./set-tmdb-key.sh`), or the first fetch is still running: picks arrive within a minute of opening Talkies with the TV online. |
 | **Continue** stays empty | Notification access isn't on, or `READ_TV_LISTINGS` wasn't granted (see *Install by hand*). |
 | `INSTALL_FAILED_UPDATE_INCOMPATIBLE` | The installed Talkies was built on another computer. `adb uninstall com.techpp.glass`, then install again (settings and history start over). |
-| The install script stops at **API 2x** | The TV runs Android 10 or older; Talkies needs Android 11. |
+| The install script stops at **API 2x** | The TV runs Android 7.1 or older; Talkies needs Android 8.0. |
 
 ## When you're done: close network debugging
 
@@ -616,12 +632,18 @@ Code (details and license texts in `THIRD_PARTY_NOTICES.md`, all MIT):
   [CleanYourTV](https://github.com/Gathin23/cleanyourtv).
 - The damped spring behind the motion, and the trending row's idea: [Free My TV](https://github.com/simbasjungles/free-my-tv).
 - The speed test, HDMI-CEC names and the update bell's approach: [Matinee](https://github.com/Jarvis322/matinee).
+- Recognising consoles and players by what they announce over HDMI-CEC: [Luma](https://github.com/0xProbabillity/luma-tv).
+- Tiles for apps without a TV banner: [GlassLauncher](https://github.com/tlfares/GlassLauncher).
 
 Ideas (no code; Talkies' own implementation):
 
 - The hold-OK menu (Move, Uninstall, App info), removing a card from Continue, and giving remote buttons a new job:
   [Plume](https://github.com/aradhyas8/Plume_Launcher). Remote keys also follow CleanYourTV's.
+- Bing wallpaper, channel cards in last-watched order and apps opening from their tile: Plume. Spotting a stopped
+  accessibility service: [Matinee](https://github.com/Jarvis322/matinee).
 - Bluetooth connect, Restart…, Talkies at power-on, Empty inputs and the settings fallback for TVs that hide the
   standard settings screen: [CleanYourTV](https://github.com/Gathin23/cleanyourtv)'s launcher and add-ons.
+- Now playing and the weather forecast: [Luma](https://github.com/0xProbabillity/luma-tv).
+- Animation speed and Storage in Control Center: [GlassLauncher](https://github.com/tlfares/GlassLauncher).
 
 The Outfit typeface is © The Outfit Project Authors, licensed under the SIL Open Font License 1.1 (`OUTFIT-OFL.txt`).
