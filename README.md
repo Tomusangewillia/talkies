@@ -62,8 +62,8 @@ app, under the screensaver or in standby. Coming back to the home screen fetches
 | *Inputs: each HDMI device by name, with its brand's colour* | *Control Center* |
 | ![Control Center → Weather: the next six hours, 20° Clear at 10 pm down to 18° Mostly clear at 3 am](docs/weather-hours.jpg) | ![Control Center → Weather, OK again: the next six days with highs, lows and conditions](docs/weather-days.jpg) |
 | *Weather: the next six hours…* | *…and OK again for the next six days* |
-| ![Hold OK on Prime Video in the dock: Remove from dock, Move, Hide and App info](docs/hold-menu.jpg) | ![The Cricket row below the dock: India v New Zealand and Ireland v Namibia scorecards with results](docs/cricket.jpg) |
-| *Hold OK on an app to remove, move or hide it* | *The Cricket row below the dock* |
+| ![Hold OK on Prime Video in the dock: Remove from dock, Move, Hide and App info](docs/hold-menu.jpg) | ![The Cricket and Football rows below the dock: a live Australia v South Africa Test, Bangladesh v West Indies and a Ranji Trophy match, and a live Indian Super League match, Goa 0 SC Delhi 1 in stoppage time](docs/scores.jpg) |
+| *Hold OK on an app to remove, move or hide it* | *Live cricket and football below the dock* |
 | ![Bing's picture of the day, a castle above the clouds at dawn, behind the weather, clock, picks and dock](docs/bing.jpg) | ![The Inputs menu in the light look, over the Bing wallpaper](docs/inputs-light.jpg) |
 | *Bing wallpaper (Talkies settings → Bing wallpaper)* | *Inputs in the light look* |
 | ![The light look by day: Breaking Bad focused in Trending, a soft pink glow from Netflix](docs/home-light.jpg) | ![For You hidden, dark: a larger weather, clock and date over a blue glow from Prime Video, and the dock](docs/minimal-dark.jpg) |
