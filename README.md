@@ -12,6 +12,20 @@ been tested.
 Talkies only replaces the home screen: it doesn't remove the TV maker's apps, ads services or tracking. To do that
 too, use [CleanYourTV](https://github.com/Gathin23/cleanyourtv) first; Talkies works alongside it.
 
+**Yours to change, and set for where you live.** Talkies works out your country from the TV's time zone (many TVs
+stay on "English (United States)" wherever they are), and almost everything on the screen can be changed:
+
+| | Set for your country | You can change |
+|---|---|---|
+| **Weather** | °C or °F; day and night follow your sunrise and sunset | The area (a town or `lat,lon`), in Talkies settings → Keys and location |
+| **For You** | Trending and *New in your country* only show titles that stream on a subscription where you are | Show or hide it |
+| **Dock** | — | Which seven apps, and their order: hold OK on an app to add, remove or move it |
+| **Cricket** | Your team's matches first, then other internationals and your domestic competitions (IPL, Ranji Trophy… in India) | On or off |
+| **Football** | Your country's leagues by default (Premier League, Champions League and ISL in India; MLS first in the US…) | Pick any leagues |
+| **Channels, keys, look** | — | Which channel rows and their order, what each remote button does (tap and hold), Light, Dark or Auto, wallpaper |
+
+Wrong country? Set it with `./set-region.sh GB`.
+
 - Top left, the weather, then the time and date ("22° OVERCAST", "11:10 PM | WEDNESDAY 21 OCTOBER")
 - **For You** below it: three tabs (Continue, Trending, New in *your country*) and a row of picks, the current pick large with
   a one-line description ("Film · Comedy · Hindi · Netflix"), the next ones small beside it. It can be hidden, and the clock then grows
