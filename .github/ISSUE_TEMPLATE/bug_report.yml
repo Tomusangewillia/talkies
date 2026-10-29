@@ -1,0 +1,51 @@
+name: Bug report
+description: Something in Talkies is broken or behaves wrongly.
+labels: [bug]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for reporting! Questions and ideas go to [Discussions](https://github.com/rajupp/talkies/discussions), and
+        many setup problems (no picks, no weather, a greyed-out switch, "App not installed.") are answered in the
+        README's [Questions and fixes](https://github.com/rajupp/talkies#questions-and-fixes).
+  - type: textarea
+    id: what
+    attributes:
+      label: What happened
+      description: What you did, what you expected, and what happened instead. A photo of the screen helps a lot.
+    validations:
+      required: true
+  - type: input
+    id: device
+    attributes:
+      label: TV or device
+      placeholder: e.g. OnePlus TV 55 U1S, Google TV Streamer, NVIDIA Shield
+    validations:
+      required: true
+  - type: input
+    id: android
+    attributes:
+      label: Android version
+      description: Settings → Device Preferences (or System) → About.
+      placeholder: e.g. Android TV OS 11
+    validations:
+      required: true
+  - type: input
+    id: version
+    attributes:
+      label: Talkies version
+      description: Talkies settings → About.
+      placeholder: e.g. 1.1.0
+    validations:
+      required: true
+  - type: dropdown
+    id: install
+    attributes:
+      label: How you installed it
+      options:
+        - Downloader app (code 5153858)
+        - adb with the release APK
+        - Built from source
+        - Other
+    validations:
+      required: true

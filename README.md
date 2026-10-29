@@ -213,6 +213,9 @@ Home again. From a computer with the source, `./restore.sh` also turns back on a
 **Everything else** (every screen, setting and remote button): the [Talkies guide](docs/guide.md). What changed in
 each version: [CHANGELOG.md](CHANGELOG.md).
 
+**Still stuck, or have an idea?** Ask or suggest it in [Discussions](https://github.com/rajupp/talkies/discussions).
+[Issues](https://github.com/rajupp/talkies/issues) are for bugs: include your TV, Android version and Talkies version.
+
 ## Credits
 
 Data (also listed in the app, Talkies settings → About):
