@@ -3,16 +3,17 @@
 Versions are numbered *major.minor.fix*. While Talkies is in beta they start with 0: a new minor number brings new
 features, a new fix number only fixes. The version shows in Talkies settings → About.
 
-## Unreleased
+## 1.1.1 — 29 October 2026
 
 ### New
 - **Support Talkies** in Talkies settings → About: a QR code for [buymeacoffee.com/rajupp](https://buymeacoffee.com/rajupp),
   also in the README and as GitHub's Sponsor button.
 
 ### Fixed
-- **Remote keys can change buttons Android has no name for**, such as the Netflix and Prime Video buttons on some
-  remotes (the Mi Box's, for one). They used to go straight to their app while Talkies waited; now they're known by
-  the remote's own code and show as *Button 0x…*. While it waits, Talkies also logs every button it sees.
+- **Remote keys can change buttons Android has no name for**, such as the app buttons on some remotes. They used to
+  go straight to their app while Talkies waited; now they're known by the remote's own code and show as *Button 0x…*.
+  (A button the TV's own software handles, like the Mi Box's Netflix button may be, still can't be changed.) While it
+  waits, Talkies also logs every button it sees.
 - **The glow around the focus ring fades smoothly.** It was two overlapping outlines, which showed as steps up close.
 
 ## 1.1.0 — 29 October 2026
