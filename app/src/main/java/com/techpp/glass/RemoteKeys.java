@@ -20,6 +20,10 @@ import java.util.TreeMap;
  * key code → action: "app:<package>", "inputs", "home" or "none" ("k<code>"), and the job for holding the button
  * ("h<code>"), which only a button with a press job can have: a press with no job has to reach the TV untouched,
  * and Talkies can't tell a press from a hold until the button is let go. An idea from Plume and CleanYourTV.
+ *
+ * A button is known by its key code, or, for one Android has no code for (KEYCODE_UNKNOWN: the app buttons on some
+ * remotes, such as the Mi Box's Netflix and Prime Video), by its scan code from the remote, stored negated so it
+ * can't clash with a key code. See {@link #id}.
  */
 final class RemoteKeys {
     static final String INPUTS = "inputs", HOME = "home", NONE = "none", APP = "app:";
@@ -29,8 +33,15 @@ final class RemoteKeys {
 
     private static SharedPreferences prefs(Context c) { return c.getSharedPreferences("remote_keys", Context.MODE_PRIVATE); }
 
+    /** The button's id: its key code, or minus its scan code when Android has no key code for it (0: neither). */
+    static int id(KeyEvent e) {
+        if (e.getKeyCode() != KeyEvent.KEYCODE_UNKNOWN) return e.getKeyCode();
+        return e.getScanCode() > 0 ? -e.getScanCode() : 0;
+    }
+
     /** Navigation, OK, Back, Home, volume and power keep their jobs: remapping them could lock you out of the TV. */
     static boolean learnable(int code) {
+        if (code < 0) return true;  // a button known only by its scan code
         switch (code) {
             case KeyEvent.KEYCODE_DPAD_UP: case KeyEvent.KEYCODE_DPAD_DOWN: case KeyEvent.KEYCODE_DPAD_LEFT:
             case KeyEvent.KEYCODE_DPAD_RIGHT: case KeyEvent.KEYCODE_DPAD_CENTER: case KeyEvent.KEYCODE_ENTER:
@@ -60,7 +71,7 @@ final class RemoteKeys {
         else prefs(c).edit().putString("h" + code, action).apply();
     }
 
-    /** Key code → action, in key-code order. */
+    /** Button id ({@link #id}) → action, in id order. */
     static Map<Integer, String> all(Context c) {
         Map<Integer, String> out = new TreeMap<>();
         for (Map.Entry<String, ?> e : prefs(c).getAll().entrySet()) {
@@ -74,8 +85,9 @@ final class RemoteKeys {
         return out;
     }
 
-    /** "Prog Red", "Button 3", "Key 1201" for a vendor key Android has no name for. */
+    /** "Prog Red", "Button 3", "Key 1201" for a vendor key Android has no name for, "Button 0x1a5" by scan code. */
     static String keyName(int code) {
+        if (code < 0) return "Button 0x" + Integer.toHexString(-code);
         String s = KeyEvent.keyCodeToString(code);
         if (!s.startsWith("KEYCODE_")) return "Key " + code;
         StringBuilder b = new StringBuilder();

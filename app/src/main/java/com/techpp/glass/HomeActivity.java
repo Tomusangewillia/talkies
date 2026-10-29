@@ -2374,15 +2374,7 @@ public class HomeActivity extends Activity {
             Toast.makeText(this, "Couldn't open the page for your phone", Toast.LENGTH_SHORT).show();
             return;
         }
-        boolean[][] modules = Qr.encode(page.url);
-        int quiet = 4, n = modules.length + 2 * quiet, scale = 8;
-        int[] pixels = new int[n * n];
-        java.util.Arrays.fill(pixels, 0xFFFFFFFF);
-        for (int y = 0; y < modules.length; y++)
-            for (int x = 0; x < modules.length; x++) if (modules[y][x]) pixels[(y + quiet) * n + x + quiet] = 0xFF000000;
-        Bitmap qr = Bitmap.createScaledBitmap(Bitmap.createBitmap(pixels, n, n, Bitmap.Config.ARGB_8888), n * scale, n * scale, false);
-        ImageView code = new ImageView(this);
-        code.setImageBitmap(qr);
+        ImageView code = qrCode(page.url);
         LinearLayout box = new LinearLayout(this);
         box.setOrientation(LinearLayout.VERTICAL);
         box.setGravity(Gravity.CENTER_HORIZONTAL);
@@ -2405,6 +2397,42 @@ public class HomeActivity extends Activity {
                 .setOnDismissListener(d -> page.close())
                 .create();
         dialog[0].show();
+    }
+
+    /** A QR code for {@code text}, black on white with its quiet zone, sharp at any size. */
+    private ImageView qrCode(String text) {
+        boolean[][] modules = Qr.encode(text);
+        int quiet = 4, n = modules.length + 2 * quiet, scale = 8;
+        int[] pixels = new int[n * n];
+        java.util.Arrays.fill(pixels, 0xFFFFFFFF);
+        for (int y = 0; y < modules.length; y++)
+            for (int x = 0; x < modules.length; x++) if (modules[y][x]) pixels[(y + quiet) * n + x + quiet] = 0xFF000000;
+        ImageView code = new ImageView(this);
+        code.setImageBitmap(Bitmap.createScaledBitmap(Bitmap.createBitmap(pixels, n, n, Bitmap.Config.ARGB_8888), n * scale, n * scale, false));
+        return code;
+    }
+
+    private static final String SUPPORT_URL = "https://buymeacoffee.com/rajupp";
+
+    /** About → Support Talkies: the Buy Me a Coffee page as a QR code, since a TV has no easy way to open a link. */
+    private void showSupport() {
+        LinearLayout box = new LinearLayout(this);
+        box.setOrientation(LinearLayout.VERTICAL);
+        box.setGravity(Gravity.CENTER_HORIZONTAL);
+        box.setPadding(px(24), px(8), px(24), 0);
+        box.addView(qrCode(SUPPORT_URL), new LinearLayout.LayoutParams(px(180), px(180)));
+        TextView where = new TextView(this);
+        where.setText("buymeacoffee.com/rajupp");
+        where.setTextSize(12);
+        where.setPadding(0, px(8), 0, 0);
+        box.addView(where);
+        new android.app.AlertDialog.Builder(this, android.R.style.Theme_DeviceDefault_Dialog_Alert)
+                .setTitle("Support Talkies")
+                .setMessage("Talkies is free, with no ads or tracking, and built in my spare time. If you enjoy it, "
+                        + "scan this with your phone to buy me a popcorn. Thank you!")
+                .setView(box)
+                .setNegativeButton("Close", null)
+                .show();
     }
 
     /** Checks a key from the phone page with its service and saves it unless turned down; the line the phone shows. */
@@ -3159,6 +3187,7 @@ public class HomeActivity extends Activity {
         };
         addRow("Made by", "Raju  ·  TechPP (techpp.com)", () -> { }, true);
         addRow("Source code", "github.com/rajupp/talkies", () -> { }, true);
+        addRow("Support Talkies", "buymeacoffee.com/rajupp", this::showSupport, true);
         // TMDB's terms ask for its logo with the credit: smaller than anything identifying Talkies.
         LinearLayout picks = (LinearLayout) addRow("Picks", null, () -> { }, true);
         ImageView logo = new ImageView(this);

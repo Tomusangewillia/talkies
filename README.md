@@ -13,7 +13,8 @@
   <a href="#install"><b>Install</b></a> &nbsp;·&nbsp;
   <a href="#what-you-get"><b>What you get</b></a> &nbsp;·&nbsp;
   <a href="docs/guide.md"><b>Guide</b></a> &nbsp;·&nbsp;
-  <a href="#questions-and-fixes"><b>Questions</b></a>
+  <a href="#questions-and-fixes"><b>Questions</b></a> &nbsp;·&nbsp;
+  <a href="#support-talkies"><b>Support</b></a>
 </p>
 
 <p align="center">
@@ -215,6 +216,12 @@ each version: [CHANGELOG.md](CHANGELOG.md).
 
 **Still stuck, or have an idea?** Ask or suggest it in [Discussions](https://github.com/rajupp/talkies/discussions).
 [Issues](https://github.com/rajupp/talkies/issues) are for bugs: include your TV, Android version and Talkies version.
+
+## Support Talkies
+
+Talkies is free, with no ads or tracking, and built in my spare time. If it's made your TV nicer, you can
+[buy me a popcorn 🍿](https://buymeacoffee.com/rajupp); it all goes back into Talkies. Stars, bug reports and ideas in
+[Discussions](https://github.com/rajupp/talkies/discussions) help just as much.
 
 ## Credits
 

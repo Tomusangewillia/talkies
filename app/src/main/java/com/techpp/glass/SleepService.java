@@ -140,14 +140,21 @@ public class SleepService extends AccessibilityService {
             if (up) { hideWarning(); Sleep.extend(this); }
             return true;
         }
+        int id = RemoteKeys.id(event);
         KeyListener l = learning;
-        if (l != null && RemoteKeys.learnable(code)) {
-            if (up) { learning = null; main.post(() -> l.onKey(code)); }
+        if (l != null && event.getAction() == KeyEvent.ACTION_DOWN && event.getRepeatCount() == 0) {
+            // What the remote sent, for anyone checking with adb logcat why a button can't be changed (a button the
+            // TV's software handles itself never shows up here at all).
+            Log.i(TAG, "Remote keys: " + KeyEvent.keyCodeToString(code) + " scan " + event.getScanCode()
+                    + (RemoteKeys.learnable(id) ? "" : " (can't be changed)"));
+        }
+        if (l != null && RemoteKeys.learnable(id)) {
+            if (up) { learning = null; main.post(() -> l.onKey(id)); }
             return true;
         }
-        String action = l == null ? RemoteKeys.action(this, code) : null;
+        String action = l == null && id != 0 ? RemoteKeys.action(this, id) : null;
         if (action == null) return false;
-        String hold = RemoteKeys.holdAction(this, code);
+        String hold = RemoteKeys.holdAction(this, id);
         if (hold == null) {
             if (up) RemoteKeys.run(this, action);
             return true;
