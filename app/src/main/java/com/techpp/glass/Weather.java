@@ -56,6 +56,11 @@ final class Weather {
 
     private String unit() { return Region.fahrenheit(Region.country(ctx)) ? "F" : "C"; }
 
+    /** The network is back: a fetch that failed while it was down may run again now, without waiting out the retry. */
+    void networkBack() {
+        if (prefs.getLong("try_at", 0) > prefs.getLong("ok_at", 0)) prefs.edit().remove("try_at").apply();
+    }
+
     void refreshIfStale(Listener l) {
         String area = area();
         if (area == null || running) return;

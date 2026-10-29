@@ -3,6 +3,25 @@
 Versions are numbered *major.minor.fix*. While Talkies is in beta they start with 0: a new minor number brings new
 features, a new fix number only fixes. The version shows in Talkies settings → About.
 
+## 0.4.1 — 29 October 2026
+
+### New
+- **RAM and storage on the home screen**: two slim meters beside the icon buttons show how much of each is free,
+  updated every minute (Talkies settings → RAM and storage hides them).
+- **Send from your phone** (Talkies settings → Keys and location): a QR code opens a page on your phone to paste the
+  TMDB key, the CricketData key and the weather area, instead of typing them with the remote. It works once, for 5
+  minutes, only on your home network; each key is still checked before it's saved. Adapted from Free My TV (MIT).
+- **Back up and restore your settings**: `./backup-settings.sh` copies Talkies settings, the dock and app order,
+  hidden apps, remote keys, channels, football leagues, the keys and the weather area to `talkies-backup.json` on your
+  computer; `./restore-settings.sh` puts them back after a reinstall or on another TV.
+
+### Changed
+- **Keys and location** is now the first row in Talkies settings.
+
+### Fixed
+- **Back online, fetched at once**: when the Wi-Fi drops and comes back, the weather, picks, scores and Bing photo
+  that failed meanwhile are fetched straight away instead of at their next retry. An idea from Free My TV.
+
 ## 0.4.0 — 28 October 2026
 
 ### New

@@ -46,6 +46,11 @@ final class Bing {
     String caption() { return prefs.getString("caption", null); }
 
     /** Fetches today's picture if the last look was long enough ago; {@code changed} runs on the main thread. */
+    /** The network is back: a check that failed while it was down may run again now. */
+    void networkBack() {
+        if (prefs.getBoolean("failed", false)) prefs.edit().remove("checked").apply();
+    }
+
     void refreshIfStale(Runnable changed) {
         long now = System.currentTimeMillis();
         if (busy || now - prefs.getLong("checked", 0) < (prefs.getBoolean("failed", false) ? RETRY_MS : STALE_MS)) return;

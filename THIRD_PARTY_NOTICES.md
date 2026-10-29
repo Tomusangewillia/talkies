@@ -37,8 +37,9 @@ see launcher/FONT-LICENSE-OFL.txt.
 
 ---
 
-`Spring.java` (the damped spring behind the focus, scrolling and picks motion) is from Free My TV
-(https://github.com/simbasjungles/free-my-tv, `app/src/io/freemytv/Spring.java`), under this license:
+`Spring.java` (the damped spring behind the focus, scrolling and picks motion) and `Qr.java` (the QR code for Send
+from your phone) are from Free My TV (https://github.com/simbasjungles/free-my-tv, `app/src/io/freemytv/Spring.java`
+and `Qr.java`), and `PhonePage.java` is adapted from its `KeyPage.java`, all under this license:
 
 ```
 MIT License
@@ -158,3 +159,9 @@ LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 ```
+
+---
+
+`Qr.java` follows Project Nayuki's QR Code generator library (https://www.nayuki.io/page/qr-code-generator-library),
+cut down to byte mode, level M and versions 1 to 10. Copyright (c) Project Nayuki, MIT License; the full notice is at
+the top of `Qr.java`.

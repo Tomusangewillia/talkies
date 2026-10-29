@@ -182,6 +182,9 @@ public class HomeActivity extends Activity {
     private boolean serviceStopped, rebindTried;
     // For You (title, tabs, picks) can be hidden in Control Center; a large clock, date and weather take its place.
     private boolean forYou;
+    private Meters meters;
+    /** Online at the last network change; null before the first. */
+    private Boolean wasOnline;
     private View forYouHead, bigClock;
     private TextView bigTime, bigAmPm, bigDate, bigWeather;
     private View bigRule;
@@ -227,6 +230,9 @@ public class HomeActivity extends Activity {
     @Override
     protected void onCreate(Bundle state) {
         super.onCreate(state);
+        // restore-settings.sh pushed a backup: apply it before anything reads the settings.
+        if (Backup.restoreIfPresent(this)) Toast.makeText(this, "Settings restored from the backup", Toast.LENGTH_LONG).show();
+        else if (getIntent().getBooleanExtra("talkies_backup", false)) Backup.save(this);  // asked before Talkies was running
         setContentView(R.layout.activity_home);
         weigh(this::findViewById, R.id.title, 600, R.id.info, 400, R.id.score, 500, R.id.big_weather, 500, R.id.big_time, 400,
                 R.id.big_ampm, 500, R.id.big_date, 500, R.id.all_apps_label, 600, R.id.move_hint, 450);
@@ -244,6 +250,8 @@ public class HomeActivity extends Activity {
         bigRule = findViewById(R.id.big_rule);
         bigWeather = findViewById(R.id.big_weather);
         forYou = prefs.getBoolean("for_you", true);
+        meters = findViewById(R.id.meters);
+        meters.setVisibility(prefs.getBoolean("meters", true) ? View.VISIBLE : View.GONE);
         getWindow().setBackgroundDrawable(null);   // the backdrop covers the screen: don't paint it black first
         page = findViewById(R.id.page);
         dockBand = findViewById(R.id.dock_band);
@@ -331,6 +339,7 @@ public class HomeActivity extends Activity {
         bigAmPm.setTextColor(theme.text);
         bigDate.setTextColor(theme.text);
         bigWeather.setTextColor(theme.text2);
+        meters.setColor(theme.text);
         bigRule.setBackgroundColor((theme.text2 & 0x00FFFFFF) | 0x66000000);
         allAppsLabel.setTextColor(theme.text);
         credit.setTextColor((theme.text2 & 0x00FFFFFF) | 0x99000000);
@@ -453,6 +462,7 @@ public class HomeActivity extends Activity {
         bigAmPm.setVisibility(h24 ? View.GONE : View.VISIBLE);
         bigDate.setText(DateFormat.format("EEEE  d MMMM", now));
         bigWeather.setText(weatherLine == null ? "" : weatherLine);
+        if (meters.getVisibility() == View.VISIBLE) meters.update();
         bigWeather.setVisibility(weatherLine == null ? View.GONE : View.VISIBLE);
         updateScore();
     }
@@ -2146,13 +2156,14 @@ public class HomeActivity extends Activity {
     private void openKeysAndLocation(int focus) {
         beginMenu(settingsAt, "Keys and location");
         String tmdb = Keys.read(this, Keys.TMDB), cricket = Keys.read(this, Keys.CRICKET), area = Keys.read(this, Keys.LOCATION);
-        String paste = "\n\nTip: the Google TV app on your phone has a keyboard that can paste it.";
+        String paste = "\n\nTip: Send from your phone (above) is easier, or the Google TV app's keyboard on your phone can paste it.";
+        addRow("Send from your phone", "QR code", this::openPhonePage, true);
         addRow("TMDB key", tmdb == null ? "Not set" : Keys.masked(tmdb), () -> askText("TMDB key",
                 "For the Trending and New picks. Free at themoviedb.org → Settings → API: the API Key or the API Read "
-                        + "Access Token." + paste, null, true, tmdb != null, text -> saveKey(Keys.TMDB, "TMDB", text, 0)), true);
+                        + "Access Token." + paste, null, true, tmdb != null, text -> saveKey(Keys.TMDB, "TMDB", text, 1)), true);
         addRow("Cricket key", cricket == null ? "Not set" : Keys.masked(cricket), () -> askText("CricketData key",
                 "For live cricket scores. Free at cricketdata.org (100 requests a day, enough for Talkies)." + paste,
-                null, true, cricket != null, text -> saveKey(Keys.CRICKET, "CricketData", text, 1)), true);
+                null, true, cricket != null, text -> saveKey(Keys.CRICKET, "CricketData", text, 2)), true);
         // Coordinates pinpoint a home, so the row (and any screenshot of it) just says so; place names show as typed.
         String where = area == null ? "Not set" : area.matches("[-+0-9.,\\s]+") ? "Coordinates"
                 : area.length() > 22 ? area.substring(0, 21) + "…" : area;
@@ -2231,8 +2242,93 @@ public class HomeActivity extends Activity {
         }
         Toast.makeText(this, text.isEmpty() ? "Weather location removed" : "Saved. The weather appears in a moment",
                 Toast.LENGTH_SHORT).show();
-        if (zone == Z_MENU) openKeysAndLocation(2);
+        if (zone == Z_MENU) openKeysAndLocation(3);
         refreshOnline();
+    }
+
+    /**
+     * Keys and location → Send from your phone: a QR code for a one-time page on the home network where the phone
+     * pastes the keys and the weather area (PhonePage). Closing the dialog stops the page.
+     */
+    private void openPhonePage() {
+        java.net.InetAddress lan = PhonePage.lanAddress(this);
+        if (lan == null) {
+            Toast.makeText(this, "The TV isn't on a home Wi-Fi or Ethernet network, so the phone can't reach it", Toast.LENGTH_LONG).show();
+            return;
+        }
+        TextView status = new TextView(this);
+        android.app.AlertDialog[] dialog = new android.app.AlertDialog[1];
+        PhonePage page;
+        try {
+            page = new PhonePage(lan, new PhonePage.Listener() {
+                @Override public void checking() {
+                    runOnUiThread(() -> status.setText("Checking with TMDB and CricketData…"));
+                }
+
+                @Override public List<String> accept(Map<String, String> fields) {
+                    List<String> lines = new ArrayList<>();
+                    if (fields.containsKey("tmdb")) lines.add(acceptKey(Keys.TMDB, "TMDB", fields.get("tmdb")));
+                    if (fields.containsKey("cricket")) lines.add(acceptKey(Keys.CRICKET, "CricketData", fields.get("cricket")));
+                    if (fields.containsKey("location")) lines.add(Keys.write(HomeActivity.this, Keys.LOCATION, fields.get("location"))
+                            ? "Weather location saved." : "Couldn't save the weather location.");
+                    runOnUiThread(() -> {
+                        if (dialog[0] != null) dialog[0].dismiss();
+                        Toast.makeText(HomeActivity.this, String.join("\n", lines), Toast.LENGTH_LONG).show();
+                        if (zone == Z_MENU) openKeysAndLocation(0);
+                        refreshOnline();
+                    });
+                    return lines;
+                }
+
+                @Override public void closed(boolean expired) {
+                    if (expired) runOnUiThread(() -> status.setText("This code has expired. Close it and open Send from your phone again."));
+                }
+            });
+        } catch (java.io.IOException e) {
+            Toast.makeText(this, "Couldn't open the page for your phone", Toast.LENGTH_SHORT).show();
+            return;
+        }
+        boolean[][] modules = Qr.encode(page.url);
+        int quiet = 4, n = modules.length + 2 * quiet, scale = 8;
+        int[] pixels = new int[n * n];
+        java.util.Arrays.fill(pixels, 0xFFFFFFFF);
+        for (int y = 0; y < modules.length; y++)
+            for (int x = 0; x < modules.length; x++) if (modules[y][x]) pixels[(y + quiet) * n + x + quiet] = 0xFF000000;
+        Bitmap qr = Bitmap.createScaledBitmap(Bitmap.createBitmap(pixels, n, n, Bitmap.Config.ARGB_8888), n * scale, n * scale, false);
+        ImageView code = new ImageView(this);
+        code.setImageBitmap(qr);
+        LinearLayout box = new LinearLayout(this);
+        box.setOrientation(LinearLayout.VERTICAL);
+        box.setGravity(Gravity.CENTER_HORIZONTAL);
+        box.setPadding(px(24), px(8), px(24), 0);
+        box.addView(code, new LinearLayout.LayoutParams(px(180), px(180)));
+        TextView where = new TextView(this);
+        where.setText(page.url);
+        where.setTextSize(12);
+        where.setPadding(0, px(8), 0, 0);
+        box.addView(where);
+        status.setText("Waiting for your phone… The page works once, for 5 minutes.");
+        status.setPadding(0, px(6), 0, 0);
+        box.addView(status);
+        dialog[0] = new android.app.AlertDialog.Builder(this, android.R.style.Theme_DeviceDefault_Dialog_Alert)
+                .setTitle("Send from your phone")
+                .setMessage("Scan this with your phone's camera (on the same Wi-Fi as the TV), then paste the keys and your "
+                        + "weather area there.")
+                .setView(box)
+                .setNegativeButton("Close", null)
+                .setOnDismissListener(d -> page.close())
+                .create();
+        dialog[0].show();
+    }
+
+    /** Checks a key from the phone page with its service and saves it unless turned down; the line the phone shows. */
+    private String acceptKey(String file, String service, String text) {
+        String key = text.replaceAll("\\s", "");
+        int result = file.equals(Keys.TMDB) ? Trending.check(key) : Cricket.check(key);
+        if (result == Keys.REJECTED) return service + " didn't accept that key, so it wasn't saved.";
+        if (!Keys.write(this, file, key)) return "Couldn't save the " + service + " key.";
+        return result == Keys.OK ? service + " key saved, and it works." : service + " key saved. The TV couldn't reach "
+                + service + " to check it, so it'll try later.";
     }
 
     // ---------------------------------------------------------------- remote keys
@@ -2752,6 +2848,8 @@ public class HomeActivity extends Activity {
     private void openTalkiesSettings(int anchor) {
         settingsAt = anchor;
         beginMenu(anchor, "Talkies settings");
+        // First: the keys and the weather area are what a new TV needs set up.
+        addRow("Keys and location", null, () -> openKeysAndLocation(0), false);
         final View[] look = new View[1];
         look[0] = addRow("Appearance", APPEARANCE[prefs.getInt("appearance", 0)], () -> {
             int mode = (prefs.getInt("appearance", 0) + 1) % APPEARANCE.length;
@@ -2775,6 +2873,14 @@ public class HomeActivity extends Activity {
             buildPicksRow(0);
             if (forYou) refreshOnline();
         }, true);
+        final View[] ms = new View[1];
+        ms[0] = addRow("RAM and storage", meters.getVisibility() == View.VISIBLE ? "Shown" : "Hidden", () -> {
+            boolean show = meters.getVisibility() != View.VISIBLE;
+            prefs.edit().putBoolean("meters", show).apply();
+            meters.setVisibility(show ? View.VISIBLE : View.GONE);
+            if (show) meters.update();
+            setStatus(ms[0], show ? "Shown" : "Hidden");
+        }, true);
         final View[] sc = new View[1];
         sc[0] = addRow("Live scores", scoresLabel(), () -> {
             String[] order = {"both", "cricket", "football", "off"};
@@ -2793,7 +2899,6 @@ public class HomeActivity extends Activity {
         if (hiddenCount > 0) addRow("Hidden apps", String.valueOf(hiddenCount), this::openHiddenApps, false);
         addRow("Remote keys", RemoteKeys.all(this).isEmpty() ? null : RemoteKeys.all(this).size() + " set",
                 this::openRemoteKeys, false);
-        addRow("Keys and location", null, () -> openKeysAndLocation(0), false);
         final View[] adb = new View[1];
         adb[0] = addRow("Network debugging", "Checking…", this::openNetworkDebugging, false);
         checkNetworkDebugging(st -> { if (adb[0].isAttachedToWindow()) setStatus(adb[0], st); });
@@ -3076,6 +3181,16 @@ public class HomeActivity extends Activity {
                 || caps.hasTransport(NetworkCapabilities.TRANSPORT_ETHERNET));
         icons[P_WIFI].setAlpha(online ? 1f : 0.45f);
         icons[P_WIFI].setContentDescription(online ? "Wi-Fi" : "Wi-Fi: offline");
+        // Back online after being offline: whatever failed meanwhile is fetched now, not at its next retry.
+        if (online && Boolean.FALSE.equals(wasOnline)) {
+            weather.networkBack();
+            trending.networkBack();
+            cricket.networkBack();
+            football.networkBack();
+            bing.networkBack();
+            refreshOnline();
+        }
+        wasOnline = online;
     }
 
     /** Your own wallpaper (files/wallpaper.jpg|png|webp) replaces the soft backdrop. */
@@ -3283,6 +3398,16 @@ public class HomeActivity extends Activity {
     @Override
     protected void onNewIntent(Intent intent) {
         super.onNewIntent(intent);
+        // backup-settings.sh: write files/talkies-backup.json for it to pull. restore-settings.sh: start again, so
+        // onCreate applies the file it pushed.
+        if (intent.getBooleanExtra("talkies_backup", false)) {
+            Toast.makeText(this, Backup.save(this) ? "Settings backed up" : "Couldn't back up the settings", Toast.LENGTH_SHORT).show();
+            return;
+        }
+        if (intent.getBooleanExtra("talkies_restore", false)) {
+            recreate();
+            return;
+        }
         SleepService.learn(null);  // Home while "Waiting for a button…": stop listening
         // Home: back to the dock at the top, on the Trending tab.
         if (menuMoving) endMenuMove(false);

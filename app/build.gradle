@@ -8,8 +8,8 @@ android {
         minSdk 26          // Android 8.0, the first with home-screen channels (TvContract preview programs)
         targetSdk 35
         // Each release: versionName as in CHANGELOG.md, versionCode one higher (Android installs only higher codes as updates).
-        versionCode 4
-        versionName '0.4.0'
+        versionCode 5
+        versionName '0.4.1'
     }
     buildTypes {
         release {

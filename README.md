@@ -7,7 +7,7 @@ A small, ad-free home screen for Android TV and Google TV: one calm screen, ligh
 launcher); it adapts to the TV's country (picks, cricket, °C or °F) and screen, but other TVs and countries haven't
 been tested.
 
-**Version 0.4.0** (beta). What changed in each version: [CHANGELOG.md](CHANGELOG.md).
+**Version 0.4.1** (beta). What changed in each version: [CHANGELOG.md](CHANGELOG.md).
 
 Talkies only replaces the home screen: it doesn't remove the TV maker's apps, ads services or tracking. To do that
 too, use [CleanYourTV](https://github.com/Gathin23/cleanyourtv) first; Talkies works alongside it.
@@ -29,7 +29,7 @@ Wrong country? Set it with `./set-region.sh GB`.
 - Top left, the weather, then the time and date ("22° OVERCAST", "11:10 PM | WEDNESDAY 21 OCTOBER")
 - **For You** below it: three tabs (Continue, Trending, New in *your country*) and a row of picks, the current pick large with
   a one-line description ("Film · Comedy · Hindi · Netflix"), the next ones small beside it. It can be hidden, and the clock then grows
-- Round icon buttons top right: **Control Center**, **Inputs** (HDMI 1–3 with the plugged-in device and whether it's on
+- **RAM and storage** top right: two slim meters with how much of each is free, beside the round icon buttons: **Control Center**, **Inputs** (HDMI 1–3 with the plugged-in device and whether it's on
   or in standby over HDMI-CEC, under the name it's known by, e.g. "Fire TV · Standby" or "PlayStation 5 · On", with a dot
   in the brand's colour; AV, Live TV), **Wi-Fi**, **Settings**,
   and a **bell** that appears only while the Play Store has app updates waiting (OK opens them in the Play Store),
@@ -54,7 +54,7 @@ Wrong country? Set it with `./set-region.sh GB`.
 No ads and no video; the glow's colour comes from the app's banner, and the background is one small image stretched to the screen.
 Network use: the picks (at most every 6 hours), the weather (at most every 30 minutes) and cricket (every 15 minutes
 during live matches), and only while Talkies is the app in front and the TV's display is on: never behind another
-app, under the screensaver or in standby. Coming back to the home screen fetches whatever went stale meanwhile. The clock updates on the system's minute tick.
+app, under the screensaver or in standby. Coming back to the home screen fetches whatever went stale meanwhile, and so does the network coming back after a drop. The clock updates on the system's minute tick.
 
 | | |
 |---|---|
@@ -128,8 +128,9 @@ Gradle, so it takes a few minutes.
    - Cricket: a free [CricketData.org](https://cricketdata.org) key
    - Weather: your area (`"Camden, London"`) or `"lat,lon"`
 
-   Enter all three on the TV in Talkies settings → **Keys and location** (each key is checked before it's saved; the
-   Google TV app on your phone has a keyboard that can paste them), or from the computer with `./set-tmdb-key.sh`,
+   Enter all three on the TV in Talkies settings → **Keys and location**: **Send from your phone** shows a QR code
+   that opens a page on your phone to paste them into (each key is checked before it's saved), or type them with the
+   remote, or from the computer with `./set-tmdb-key.sh`,
    `./set-cricket-key.sh` and `./set-location.sh "your area"`.
    - Accessibility restored after a force stop: the `pm grant` under *Google Assistant and the Google TV launcher*
    - Sharp YouTube pictures: Talkies settings → **Sharp YouTube pictures** (off by default; see *Continue*)
@@ -390,14 +391,15 @@ Control Center → **Talkies settings**, or **hold OK on the ⚙ icon** (a press
 
 | Row | What OK does |
 |---|---|
+| Keys and location | Your TMDB key (picks), CricketData key (scores) and weather area. **Send from your phone** shows a QR code: scan it with a phone on the same Wi-Fi and paste them into the page it opens (it works once, for 5 minutes, only on your home network, and the keys stay on the TV). Or type or paste each one; keys are tried with the service first and only saved if it accepts them. **Remove** clears one |
 | Appearance | Cycles Auto (light by day, dark at night) → Light → Dark. With a wallpaper, Auto picks the look that suits the photo instead, and every look adds just enough veil behind the text to keep it readable |
 | For You | Shown or Hidden. Hidden removes the tabs and picks (the weather, time and date stay, larger), Up from the dock goes to the icons, and TMDB picks aren't fetched |
+| RAM and storage | Shown (default) or Hidden: the two meters beside the icon buttons, with free RAM and free storage, updated every minute |
 | Live scores | Cricket and football (default), Cricket, Football or Off: what the score line and the score rows show |
 | Football leagues | The leagues the Football row follows; see *Football* |
 | Channels | Choose which app channels show below the dock, and their order |
 | Hidden apps | Shown once you've hidden an app: the apps you hid; OK shows one again |
 | Remote keys | Give a remote button another job: open an app, Inputs, Talkies, or nothing. **Add a key**, press the button, choose. Once it has a job, **When held** gives it a second one for holding it (over half a second). Navigation, OK, Back, Home, volume and power can't be changed |
-| Keys and location | Your TMDB key (picks), CricketData key (scores) and weather area. Type or paste each one; keys are tried with the service first and only saved if it accepts them. **Remove** clears one |
 | Network debugging | "On · port 5555" while computers on your network can control the TV over ADB (how Talkies was installed). **Turn off** (needs the permission below) or open Developer options; turning it on again is done in Developer options |
 | Talkies at power-on | **After a restart** (default), or **Every time**: also when the TV wakes from standby into the last HDMI input or app. Pressing a button as it wakes keeps what's on screen |
 | Empty inputs | **Shown** (default), or **Under More inputs**: Inputs lists only ports with something plugged in, and a More inputs row brings back the rest |
@@ -446,7 +448,15 @@ To just peek at another launcher, open its tile under All apps; Home still bring
 ./restore.sh                           # the TV's own home screen back, Talkies removed
 ./restore.sh --keep-talkies            # the TV's own home screen back, Talkies kept
 ./set-region.sh GB                     # use another country for picks, cricket and °C/°F (--remove: the TV's own)
+./backup-settings.sh                   # copy Talkies' settings from the TV to talkies-backup.json here
+./restore-settings.sh                  # put them back (after reinstalling, or on another TV)
 ```
+
+**Back up your settings:** `./backup-settings.sh` saves Talkies settings, the dock and app order, hidden apps, remote
+keys, channels, football leagues, the keys and the weather area (and your `wallpaper.jpg`) to `talkies-backup.json`
+next to the scripts. After an uninstall, or on another TV, install Talkies, open it once, and run
+`./restore-settings.sh`: it starts again with everything as it was. The picks, scores and weather aren't in it; they
+fetch again. The file holds your keys, so git ignores it; keep it private.
 
 **Screens:** the layout is drawn for a 960 × 540 dp screen and scales itself to any TV's width, so it fills the
 screen the same way whatever density the TV reports.

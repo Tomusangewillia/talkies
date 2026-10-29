@@ -178,6 +178,11 @@ final class Trending {
     }
 
     /** Fetches a new list in the background when the saved one is old. Calls back on the main thread. */
+    /** The network is back: a fetch that failed while it was down may run again now, without waiting out the retry. */
+    void networkBack() {
+        if (prefs.getLong("try_at", 0) > prefs.getLong("ok_at", 0)) prefs.edit().remove("try_at").apply();
+    }
+
     void refreshIfStale(Listener l) {
         String key = key();
         if (key == null || running) return;
