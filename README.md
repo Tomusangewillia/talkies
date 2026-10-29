@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="docs/home.jpg" width="900" alt="Talkies on a TV: weather, clock and date at the top left, RAM and storage meters and a live cricket score at the top right, Trending picks, and a dock of seven apps with the All apps button, over a red glow from YouTube">
+  <img src="docs/home.jpg" width="900" alt="Talkies on a TV: weather, clock and date at the top left, RAM and storage meters and a live cricket score at the top right, New in India picks, and a dock of seven apps with the All apps button, over a red glow from YouTube">
 </p>
 
 <h1 align="center">Talkies</h1>

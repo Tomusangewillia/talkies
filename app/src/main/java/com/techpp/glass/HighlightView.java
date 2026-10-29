@@ -11,7 +11,7 @@ import android.view.View;
  * Full-screen overlay that draws the one focus ring: a white outline around the focused card or tile, moved
  * (with a small spring) by the activity, with a soft halo around it so it reads from across the room. In the day
  * theme a faint dark edge keeps it visible on light backgrounds; while an app is picked up for moving the ring is
- * thicker. The halo is two wider, fainter strokes: no blur, so it costs nothing per frame.
+ * thicker. The halo is six thin strokes fading outwards: no blur, so it costs nothing per frame.
  */
 public class HighlightView extends View {
     final RectF rect = new RectF();
@@ -21,6 +21,8 @@ public class HighlightView extends View {
             halo = new Paint(Paint.ANTI_ALIAS_FLAG);
     private final float dp;
     private final RectF tmp = new RectF();
+    private static final float HALO_DP = 12f;
+    private static final int HALO_BANDS = 6;
 
     public HighlightView(Context c, AttributeSet a) {
         super(c, a);
@@ -49,15 +51,17 @@ public class HighlightView extends View {
     protected void onDraw(Canvas canvas) {
         if (rect.isEmpty()) return;
         float w = (moving ? 5f : 4f) * dp;
-        // The halo: outermost and faintest first, just outside the ring.
-        int haloRgb = day ? 0x000000 : 0xFFFFFF;
-        for (int i = 2; i >= 1; i--) {
-            float hw = i * 5 * dp;
-            halo.setStrokeWidth(hw);
-            halo.setColor(((day ? 0x14 : 0x22) / i << 24) | haloRgb);
+        // The halo: thin bands side by side just outside the ring, each fainter than the last, so it fades out
+        // smoothly over 12 dp (overlapping wide strokes showed as steps).
+        int haloRgb = day ? 0x000000 : 0xFFFFFF, strongest = day ? 0x22 : 0x34;
+        float band = HALO_DP / HALO_BANDS * dp;
+        halo.setStrokeWidth(band);
+        for (int i = 0; i < HALO_BANDS; i++) {
+            halo.setColor((Math.round(strongest * (1 - i / (float) HALO_BANDS)) << 24) | haloRgb);
+            float out = w + band * i + band / 2;
             tmp.set(rect);
-            tmp.inset(-w - hw / 2, -w - hw / 2);
-            canvas.drawRoundRect(tmp, radius + w + hw / 2, radius + w + hw / 2, halo);
+            tmp.inset(-out, -out);
+            canvas.drawRoundRect(tmp, radius + out, radius + out, halo);
         }
         ring.setStrokeWidth(w);
         tmp.set(rect);

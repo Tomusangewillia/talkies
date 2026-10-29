@@ -3,6 +3,11 @@
 Versions are numbered *major.minor.fix*. While Talkies is in beta they start with 0: a new minor number brings new
 features, a new fix number only fixes. The version shows in Talkies settings → About.
 
+## Unreleased
+
+### Fixed
+- **The glow around the focus ring fades smoothly.** It was two overlapping outlines, which showed as steps up close.
+
 ## 1.1.0 — 29 October 2026
 
 ### New
