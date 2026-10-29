@@ -3,6 +3,19 @@
 Versions are numbered *major.minor.fix*. While Talkies is in beta they start with 0: a new minor number brings new
 features, a new fix number only fixes. The version shows in Talkies settings → About.
 
+## 1.0.0 — 29 October 2026
+
+### New
+- **A ready APK, and updates from Talkies settings.** Each release has `talkies.apk`, signed with the project's key,
+  to install with adb without building. Talkies settings → **Updates** shows whether a newer release is out (checked
+  once a day) and installs it, with Android asking first. Only the APK from the releases takes updates; one built on
+  a computer is told a new version is out. Adapted from Free My TV's updater (MIT).
+
+### Fixed
+- **No crash on a fresh install.** Right after installing, Android can connect Talkies' media listener before it allows
+  it, and the refusal crashed Talkies on start (Home and the app icon did nothing). It now waits and tries again every
+  30 seconds.
+
 ## 0.4.1 — 29 October 2026
 
 ### New

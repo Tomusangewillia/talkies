@@ -39,7 +39,8 @@ see launcher/FONT-LICENSE-OFL.txt.
 
 `Spring.java` (the damped spring behind the focus, scrolling and picks motion) and `Qr.java` (the QR code for Send
 from your phone) are from Free My TV (https://github.com/simbasjungles/free-my-tv, `app/src/io/freemytv/Spring.java`
-and `Qr.java`), and `PhonePage.java` is adapted from its `KeyPage.java`, all under this license:
+and `Qr.java`), `PhonePage.java` is adapted from its `KeyPage.java` and `SelfUpdate.java` from its `Updates.java`, all under
+this license:
 
 ```
 MIT License

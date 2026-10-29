@@ -7,7 +7,7 @@ A small, ad-free home screen for Android TV and Google TV: one calm screen, ligh
 launcher); it adapts to the TV's country (picks, cricket, °C or °F) and screen, but other TVs and countries haven't
 been tested.
 
-**Version 0.4.1** (beta). What changed in each version: [CHANGELOG.md](CHANGELOG.md).
+**Version 1.0.0**. What changed in each version: [CHANGELOG.md](CHANGELOG.md).
 
 Talkies only replaces the home screen: it doesn't remove the TV maker's apps, ads services or tracking. To do that
 too, use [CleanYourTV](https://github.com/Gathin23/cleanyourtv) first; Talkies works alongside it.
@@ -141,6 +141,21 @@ repository. `./restore.sh` puts the TV back the way it was.
 **Things to know before you publish a fork or build:** the release build is signed with your computer's debug key,
 so a build from another computer can't update it (uninstall first). Talkies uses an accessibility service, which
 is fine for sideloading but not allowed on Google Play for this purpose.
+
+## The ready APK
+
+From 1.0.0 each release has `talkies.apk`, signed with the project's key: no build tools needed.
+
+```bash
+adb connect 192.168.1.20:5555
+adb -s 192.168.1.20:5555 install -r talkies.apk
+adb -s 192.168.1.20:5555 shell cmd package set-home-activity --user 0 com.techpp.glass/.HomeActivity
+```
+
+Then the same switches as below (Accessibility and notification access on the TV). From then on, Talkies settings →
+**Updates** installs each new release, with Android asking first. A Talkies you built yourself is signed with your
+own key, so it can't take them: back up your settings (`./backup-settings.sh`), uninstall it, install `talkies.apk`,
+switch Accessibility and notification access on again, and restore (`./restore-settings.sh`).
 
 ## Install by hand
 
@@ -407,6 +422,7 @@ Control Center → **Talkies settings**, or **hold OK on the ⚙ icon** (a press
 | Apps open from their tile | On by default: an app's window grows out of the tile or card you chose. It's Android's normal opening animation, started from the tile, so it costs nothing extra |
 | Home app | Shows the current home screen and opens Android's *Default home app* chooser (on Google TV the choice doesn't stick; see *Use another home screen*) |
 | Sharp YouTube pictures | Off by default. On: YouTube cards in Continue get YouTube's 1280-pixel thumbnails, looked up by title and channel |
+| Updates | The installed version, and whether a newer release is out (checked once a day while Talkies is in front). OK checks now and, on the APK from the releases, downloads the new one, checks it (GitHub's size and SHA-256, newer, signed with the project's key) and hands it to Android's installer, which asks first; the first time Android also asks to allow Talkies to install apps. A Talkies built on a computer is only told a new version is out |
 | About | Credits for the data and code Talkies uses |
 
 **One-time setup for Turn off now, the sleep timer and cricket search:** this TV has no "device admin" support, so the
@@ -450,6 +466,7 @@ To just peek at another launcher, open its tile under All apps; Home still bring
 ./set-region.sh GB                     # use another country for picks, cricket and °C/°F (--remove: the TV's own)
 ./backup-settings.sh                   # copy Talkies' settings from the TV to talkies-backup.json here
 ./restore-settings.sh                  # put them back (after reinstalling, or on another TV)
+./release-apk.sh                       # maintainer only: attach the signed talkies.apk to this version's release
 ```
 
 **Back up your settings:** `./backup-settings.sh` saves Talkies settings, the dock and app order, hidden apps, remote

@@ -9,3 +9,6 @@ cricket_key.txt
 *.apk
 talkies-backup.json
 wallpaper-backup.*
+release.properties
+*.jks
+*.keystore

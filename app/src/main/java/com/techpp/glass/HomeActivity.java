@@ -2941,6 +2941,10 @@ public class HomeActivity extends Activity {
             setStatus(yt[0], on ? "On" : "Off");
             if (on) refreshOnline();
         }, true);
+        final View[] up = new View[1];
+        up[0] = addRow("Updates", SelfUpdate.summary(this), () -> SelfUpdate.checkAndInstall(this, st -> runOnUiThread(() -> {
+            if (up[0].isAttachedToWindow()) setStatus(up[0], st);
+        })), true);
         addRow("About", null, this::openAbout, false);
         showMenu(350);
     }
@@ -3380,6 +3384,11 @@ public class HomeActivity extends Activity {
         weather.refreshIfStale(this::onWeather);
         if (prefs.getBoolean("bing_wallpaper", false)) bing.refreshIfStale(this::loadWallpaper);
         if (forYou) trending.refreshIfStale(this::onPicks);
+        // Once a day: is there a newer Talkies? Said once per version.
+        background.execute(() -> {
+            if (SelfUpdate.checkIfStale(this)) runOnUiThread(() -> Toast.makeText(this, "Talkies " + SelfUpdate.available(this)
+                    + " is out: Talkies settings → Updates", Toast.LENGTH_LONG).show());
+        });
         if (prefs.getBoolean("youtube_art", false)) RecentStore.upgradeArtwork(this, () -> {
             // Sharper YouTube pictures arrived: redraw Continue and the Watch Next row.
             recentPicks = continuePicks(RecentStore.load(this), watchNextPicks);

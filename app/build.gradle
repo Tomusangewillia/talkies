@@ -8,8 +8,23 @@ android {
         minSdk 26          // Android 8.0, the first with home-screen channels (TvContract preview programs)
         targetSdk 35
         // Each release: versionName as in CHANGELOG.md, versionCode one higher (Android installs only higher codes as updates).
-        versionCode 5
-        versionName '0.4.1'
+        versionCode 7
+        versionName '1.0.0'
+    }
+    // The project's release key, when this computer has it (release.properties, never in git): APKs signed with it
+    // can update each other from Talkies settings → Updates. Anyone else's build signs with their own debug key.
+    def releaseProps = new Properties()
+    def releaseFile = rootProject.file('release.properties')
+    if (releaseFile.exists()) releaseFile.withInputStream { releaseProps.load(it) }
+    signingConfigs {
+        if (releaseProps.storeFile) {
+            release {
+                storeFile file(releaseProps.storeFile)
+                storePassword releaseProps.storePassword
+                keyAlias releaseProps.keyAlias
+                keyPassword releaseProps.keyPassword
+            }
+        }
     }
     buildTypes {
         release {
@@ -17,9 +32,7 @@ android {
             minifyEnabled true
             shrinkResources true
             proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
-            // Signed with the same (debug) key as earlier builds, so it installs over them and keeps their data
-            // and the accessibility switch.
-            signingConfig signingConfigs.debug
+            signingConfig releaseProps.storeFile ? signingConfigs.release : signingConfigs.debug
         }
     }
     compileOptions {

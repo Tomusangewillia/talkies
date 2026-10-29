@@ -77,12 +77,30 @@ public class WatchService extends NotificationListenerService {
     @Override
     public void onListenerConnected() {
         Log.i("GlassRecent", "Notification access on; watching video apps");
-        sessions = getSystemService(MediaSessionManager.class);
-        ComponentName me = new ComponentName(this, WatchService.class);
-        sessions.addOnActiveSessionsChangedListener(onChange, me, main);
-        onSessions(sessions.getActiveSessions(me));
+        attachSessions();
         scanUpdates();
     }
+
+    /**
+     * Starts following media sessions. Just after a reinstall Android can bind this listener before it has confirmed
+     * its access, and refuse the sessions; it then tries again every 30 seconds until they're allowed (before this,
+     * the refusal crashed the whole app, home screen included, on start).
+     */
+    private void attachSessions() {
+        main.removeCallbacks(retryAttach);
+        MediaSessionManager m = getSystemService(MediaSessionManager.class);
+        ComponentName me = new ComponentName(this, WatchService.class);
+        try {
+            m.addOnActiveSessionsChangedListener(onChange, me, main);
+            sessions = m;
+            onSessions(m.getActiveSessions(me));
+        } catch (SecurityException e) {
+            Log.w("GlassRecent", "Media sessions not allowed yet, trying again in 30 s: " + e.getMessage());
+            main.postDelayed(retryAttach, 30_000);
+        }
+    }
+
+    private final Runnable retryAttach = this::attachSessions;
 
     @Override public void onNotificationPosted(android.service.notification.StatusBarNotification sbn) { scanUpdates(); }
 
@@ -94,6 +112,7 @@ public class WatchService extends NotificationListenerService {
 
     @Override
     public void onListenerDisconnected() {
+        main.removeCallbacks(retryAttach);
         if (sessions != null) sessions.removeOnActiveSessionsChangedListener(onChange);
         for (Watch w : watching.values().toArray(new Watch[0])) stop(w);
     }
