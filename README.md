@@ -74,18 +74,16 @@ Pick the way that suits you:
 
 | | No computer | With a computer (recommended) | Ask an AI assistant |
 |---|---|---|---|
-| **How** | The *Downloader* app on the TV | `adb`, 3 commands | Claude Code, Codex or Gemini CLI does it |
+| **How** | The *Downloader* app on the TV, code `5153858` | `adb`, 3 commands | Claude Code, Codex or Gemini CLI does it |
 | **Everything works?** | Almost: no animation speed or self-repair (see below) | Yes | Yes |
 | **Time** | 5 minutes | 10 minutes | 10 minutes |
 
 ### Without a computer
 
 1. On the TV, install **Downloader** (by AFTVnews) from the Play Store.
-2. Open it and type this address in its home screen:
-   ```
-   github.com/rajupp/talkies/releases/latest/download/talkies.apk
-   ```
-   It always gets the latest version.
+2. Open it and type the code **`5153858`** in its home screen. It always gets the latest version. (Or type the
+   full address: `github.com/rajupp/talkies/releases/latest/download/talkies.apk`.) Downloader first shows a page
+   naming the GitHub link it's about to load: choose to continue.
 3. When Android asks, allow Downloader to install apps (*Install unknown apps*), then choose **Install**.
 4. Open **Talkies** from your apps and go on to [First-time setup](#first-time-setup).
 
