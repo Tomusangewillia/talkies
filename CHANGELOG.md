@@ -3,6 +3,28 @@
 Versions are numbered *major.minor.fix*. While Talkies is in beta they start with 0: a new minor number brings new
 features, a new fix number only fixes. The version shows in Talkies settings → About.
 
+## 1.0.2 — 29 October 2026
+
+### New
+- **Finish setup** (Talkies settings, only while something's left): the Home button's Accessibility switch,
+  notification access and the Wi-Fi name and Watch Next permissions, each one OK away. Talkies also asks for the two
+  permissions the first time it opens, so an APK installed without a computer works fully.
+- **A README for everyone**: install without a computer (the Downloader app), with one, or through an AI assistant,
+  then a first-time checklist, updates, privacy and fixes. The full reference moved to `docs/guide.md`, and building
+  from source to `docs/building.md`.
+
+### Changed
+- **Up lands on Control Center** the first time, instead of Inputs; after that it still goes to the icon you used
+  last.
+- **Menus wrap around**: Up on the first row goes to the last, Down on the last to the first, in Control Center,
+  Talkies settings and every other menu.
+- **About** says who made Talkies (Raju · TechPP) and where its source code is, and credits Luma and GlassLauncher
+  too.
+
+### Fixed
+- **Back to Talkies after an update.** Installing an update left the TV on Google TV's home screen until you pressed
+  Home; Talkies now takes over again as soon as it's back.
+
 ## 1.0.1 — 29 October 2026
 
 ### New

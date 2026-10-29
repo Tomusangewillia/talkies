@@ -104,6 +104,13 @@ public class SleepService extends AccessibilityService {
         ServiceRepair.connected(this, SleepService.class);
         // After a restart the Google TV home screen is up before this service binds: take over once.
         if (SystemClock.elapsedRealtime() < BOOT_WINDOW_MS) openHome();
+        // After Talkies updates itself (or the service comes back for any other reason), Android shows the built-in
+        // launcher while this service is unbound, so the window event that would bring Talkies back is missed: if
+        // that launcher is what's in front now, take over once.
+        main.postDelayed(() -> {
+            AccessibilityNodeInfo root = getRootInActiveWindow();
+            if (root != null && root.getPackageName() != null && stockPackages.contains(root.getPackageName().toString())) openHome();
+        }, 500);
         // Waking from standby isn't a restart: the TV may bring back the last input or app. Registered always, so
         // the setting works without restarting the service; the TV keeps this process up while the service runs.
         if (screenOn == null) {

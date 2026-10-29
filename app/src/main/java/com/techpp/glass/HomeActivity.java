@@ -133,6 +133,8 @@ public class HomeActivity extends Activity {
     private int menuMode = MENU_PLAIN;
     private List<Channels.Channel> editList, beforeEdit;
     private boolean menuMoving, channelsEdited;
+    /** The arrow being handled is a repeat from holding it down: menus then stop at their ends instead of wrapping. */
+    private boolean heldKey;
 
     // Picks for the three tabs, and what the row shows now.
     private Trending trending;
@@ -150,7 +152,7 @@ public class HomeActivity extends Activity {
     private final ExecutorService background = Executors.newSingleThreadExecutor();
 
     // Focus.
-    private int zone = Z_DOCK, iconIdx = P_INPUTS, dockIdx = 0, gridIdx = 0;
+    private int zone = Z_DOCK, iconIdx = P_CONTROL, dockIdx = 0, gridIdx = 0;  // Up starts on Control Center, then the icon used last
     private int menuIdx, menuAnchor = P_INPUTS;
     private View menuTile;          // a menu opened on an app or card sits by it (else under its top-bar icon)
     private Runnable menuClosed;    // and closing it puts focus back there
@@ -1516,6 +1518,7 @@ public class HomeActivity extends Activity {
             if (holdFired) { holdFired = false; return true; }  // this release just ends the hold
         }
         if (nav && e.getAction() == KeyEvent.ACTION_DOWN) {
+            heldKey = e.getRepeatCount() > 0;
             if (moving) moveApp(k); else if (menuMoving) moveMenuRow(k); else move(k);
         }
         if ((select || back) && e.getAction() == KeyEvent.ACTION_UP && !e.isCanceled()) {
@@ -1538,8 +1541,12 @@ public class HomeActivity extends Activity {
         boolean hasPicks = !rowPicks.isEmpty();
         switch (zone) {
             case Z_MENU:
+                // The ends wrap around on a fresh press: Up from the first row reaches the last one (About, Updates…)
+                // at once. Holding the key stops at the end instead of racing round again.
                 if (up && menuIdx > 0) focusMenu(menuIdx - 1);
+                else if (up && !heldKey && menuItems.size() > 1) focusMenu(menuItems.size() - 1);
                 else if (down && menuIdx < menuItems.size() - 1) focusMenu(menuIdx + 1);
+                else if (down && !heldKey && menuItems.size() > 1) focusMenu(0);
                 else if (left || right) closeMenu();
                 break;
             case Z_TOP:
@@ -2491,6 +2498,61 @@ public class HomeActivity extends Activity {
     @Override public void onRequestPermissionsResult(int req, String[] perms, int[] results) {
         super.onRequestPermissionsResult(req, perms, results);
         if (req == REQ_BLUETOOTH && Bluetooth.allowed(this)) openBluetooth();
+        // The Wi-Fi name and Watch Next are read as Talkies starts: start again with them.
+        if (req == REQ_SETUP && !permissionsMissing()) recreate();
+    }
+
+    // ---------------------------------------------------------------- finish setup
+
+    private static final int REQ_SETUP = 8;
+    /** Runtime permissions: the Wi-Fi name (Android shares it only with location) and Android TV's Watch Next list. */
+    private static final String[] SETUP_PERMISSIONS = {android.Manifest.permission.ACCESS_FINE_LOCATION,
+            "android.permission.READ_TV_LISTINGS"};  // not in the public Manifest constants
+
+    private boolean permissionsMissing() {
+        for (String p : SETUP_PERMISSIONS) if (checkSelfPermission(p) != PackageManager.PERMISSION_GRANTED) return true;
+        return false;
+    }
+
+    private boolean notificationAccess() {
+        String on = Settings.Secure.getString(getContentResolver(), "enabled_notification_listeners");
+        return on != null && on.contains(getPackageName() + "/");
+    }
+
+    /** How many first-time steps are still to do: the Home button service, notification access, the permissions. */
+    private int setupMissing() {
+        return (SleepService.isRunning() ? 0 : 1) + (notificationAccess() ? 0 : 1) + (permissionsMissing() ? 1 : 0);
+    }
+
+    /**
+     * Asked once, the first time Talkies starts without them (an APK installed without a computer): the two
+     * permissions. Talkies settings → Finish setup asks again, and lists the switches only Settings can turn on.
+     */
+    private void askPermissionsOnce() {
+        if (!permissionsMissing() || prefs.getBoolean("setup_asked", false)) return;
+        prefs.edit().putBoolean("setup_asked", true).apply();
+        requestPermissions(SETUP_PERMISSIONS, REQ_SETUP);
+    }
+
+    /** Talkies settings → Finish setup: one row per step still to do; OK opens the place it's done. */
+    private void openFinishSetup() {
+        beginMenu(settingsAt, "Finish setup");
+        if (!SleepService.isRunning()) addRow("Home button", "Accessibility → Talkies", () -> {
+            Toast.makeText(this, "Switch on Talkies here: it keeps the Home button on Talkies", Toast.LENGTH_LONG).show();
+            Intent i = new Intent().setClassName("com.android.tv.settings", "com.android.tv.settings.oemlink.AccessibilitySettingsActivity");
+            if (pm.resolveActivity(i, 0) == null) i = new Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS);
+            start(i);
+        }, false);
+        if (!notificationAccess()) addRow("Notification access", "Continue, Now playing, the bell", () -> {
+            Toast.makeText(this, "Switch on Talkies here", Toast.LENGTH_LONG).show();
+            start(new Intent(Settings.ACTION_NOTIFICATION_LISTENER_SETTINGS));
+        }, false);
+        if (permissionsMissing()) addRow("Wi-Fi name and Watch Next", "OK asks", () -> {
+            closeMenu();
+            requestPermissions(SETUP_PERMISSIONS, REQ_SETUP);
+        }, false);
+        if (menuItems.isEmpty()) addRow("All done", null, () -> { }, true);
+        showMenu(420);
     }
 
     // ---------------------------------------------------------------- network debugging
@@ -2861,7 +2923,9 @@ public class HomeActivity extends Activity {
     private void openTalkiesSettings(int anchor) {
         settingsAt = anchor;
         beginMenu(anchor, "Talkies settings");
-        // First: the keys and the weather area are what a new TV needs set up.
+        // First: what a new TV still needs (only while something does), then the keys and the weather area.
+        int missing = setupMissing();
+        if (missing > 0) addRow("Finish setup", missing + (missing == 1 ? " step left" : " steps left"), this::openFinishSetup, false);
         addRow("Keys and location", null, () -> openKeysAndLocation(0), false);
         final View[] look = new View[1];
         look[0] = addRow("Appearance", APPEARANCE[prefs.getInt("appearance", 0)], () -> {
@@ -2988,10 +3052,12 @@ public class HomeActivity extends Activity {
                 {"Cricket scores", "CricketData.org"},
                 {"Football scores", "ESPN (public scoreboard)"},
                 {"Speed test", "Cloudflare"},
-                {"Code from", "tv-vibehack/CleanYourTV, Free My TV, Matinee"},
+                {"Code from", "tv-vibehack, CleanYourTV, Free My TV, Matinee, Luma, GlassLauncher"},
                 {"Font", "Outfit (SIL OFL)"},
         };
-        // TMDB's terms ask for its logo with the credit: on the first row, smaller than anything identifying Talkies.
+        addRow("Made by", "Raju  ·  TechPP (techpp.com)", () -> { }, true);
+        addRow("Source code", "github.com/rajupp/talkies", () -> { }, true);
+        // TMDB's terms ask for its logo with the credit: smaller than anything identifying Talkies.
         LinearLayout picks = (LinearLayout) addRow("Picks", null, () -> { }, true);
         ImageView logo = new ImageView(this);
         logo.setImageResource(R.drawable.tmdb_logo);
@@ -3281,6 +3347,7 @@ public class HomeActivity extends Activity {
         Network active = cm.getActiveNetwork();
         updateNetwork(active == null ? null : cm.getNetworkCapabilities(active));
 
+        askPermissionsOnce();
         loadWallpaper();
         boolean nowDay = isDayNow();
         if (nowDay != day) { day = nowDay; applyTheme(); }
