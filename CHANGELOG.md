@@ -3,6 +3,14 @@
 Versions are numbered *major.minor.fix*. While Talkies is in beta they start with 0: a new minor number brings new
 features, a new fix number only fixes. The version shows in Talkies settings → About.
 
+## 1.0.1 — 29 October 2026
+
+### New
+- **The bell tells you about Talkies updates too.** When a newer Talkies is out, the bell at the top right appears
+  with it as the first row; OK downloads and installs it.
+- README: the first update needs Android's *Install unknown apps* switch for Talkies, and on some TVs one adb
+  command as well.
+
 ## 1.0.0 — 29 October 2026
 
 ### New

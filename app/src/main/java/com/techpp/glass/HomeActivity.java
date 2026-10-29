@@ -2758,9 +2758,14 @@ public class HomeActivity extends Activity {
 
     // ---------------------------------------------------------------- app updates
 
-    /** The bell shows while the Play Store has updates waiting (Updates, fed by WatchService). */
+    /** A newer Talkies this APK can install (SelfUpdate's daily check found it), else null. */
+    private String talkiesUpdate() {
+        return SelfUpdate.takesReleases(this) ? SelfUpdate.available(this) : null;
+    }
+
+    /** The bell shows while the Play Store has updates waiting (Updates, fed by WatchService) or a newer Talkies is out. */
     private void onUpdates() {
-        boolean any = !Updates.list().isEmpty();
+        boolean any = !Updates.list().isEmpty() || talkiesUpdate() != null;
         icons[P_BELL].setVisibility(any ? View.VISIBLE : View.GONE);
         if (!any && zone == Z_TOP && iconIdx == P_BELL) focusTop(P_SETTINGS);
         if (!any && zone == Z_MENU && menuAnchor == P_BELL) closeMenu();
@@ -2769,8 +2774,16 @@ public class HomeActivity extends Activity {
     /** One row per Play Store notification ("3 updates available" · "YouTube, Netflix…"); OK opens it in the Play Store. */
     private void openUpdates() {
         List<Updates.Item> list = Updates.list();
-        if (list.isEmpty()) return;
+        String mine = talkiesUpdate();
+        if (list.isEmpty() && mine == null) return;
         beginMenu(P_BELL, "App updates");
+        if (mine != null) {
+            // Talkies first: OK downloads and installs it here, the same as Talkies settings → Updates.
+            final View[] row = new View[1];
+            row[0] = addRow("Talkies " + mine, "OK installs", () -> SelfUpdate.checkAndInstall(this, st -> runOnUiThread(() -> {
+                if (row[0].isAttachedToWindow()) setStatus(row[0], st);
+            })), true);
+        }
         for (Updates.Item it : list) {
             String label = it.title.isEmpty() ? it.text : it.title;
             addRow(label, it.title.isEmpty() ? null : shorten(it.text, 34), () -> {
@@ -3386,8 +3399,12 @@ public class HomeActivity extends Activity {
         if (forYou) trending.refreshIfStale(this::onPicks);
         // Once a day: is there a newer Talkies? Said once per version.
         background.execute(() -> {
-            if (SelfUpdate.checkIfStale(this)) runOnUiThread(() -> Toast.makeText(this, "Talkies " + SelfUpdate.available(this)
-                    + " is out: Talkies settings → Updates", Toast.LENGTH_LONG).show());
+            boolean news = SelfUpdate.checkIfStale(this);
+            runOnUiThread(() -> {
+                onUpdates();
+                if (news) Toast.makeText(this, "Talkies " + SelfUpdate.available(this) + " is out: the bell, top right, installs it",
+                        Toast.LENGTH_LONG).show();
+            });
         });
         if (prefs.getBoolean("youtube_art", false)) RecentStore.upgradeArtwork(this, () -> {
             // Sharper YouTube pictures arrived: redraw Continue and the Watch Next row.

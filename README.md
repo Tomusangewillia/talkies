@@ -7,7 +7,7 @@ A small, ad-free home screen for Android TV and Google TV: one calm screen, ligh
 launcher); it adapts to the TV's country (picks, cricket, °C or °F) and screen, but other TVs and countries haven't
 been tested.
 
-**Version 1.0.0**. What changed in each version: [CHANGELOG.md](CHANGELOG.md).
+**Version 1.0.1**. What changed in each version: [CHANGELOG.md](CHANGELOG.md).
 
 Talkies only replaces the home screen: it doesn't remove the TV maker's apps, ads services or tracking. To do that
 too, use [CleanYourTV](https://github.com/Gathin23/cleanyourtv) first; Talkies works alongside it.
@@ -32,7 +32,7 @@ Wrong country? Set it with `./set-region.sh GB`.
 - **RAM and storage** top right: two slim meters with how much of each is free, beside the round icon buttons: **Control Center**, **Inputs** (HDMI 1–3 with the plugged-in device and whether it's on
   or in standby over HDMI-CEC, under the name it's known by, e.g. "Fire TV · Standby" or "PlayStation 5 · On", with a dot
   in the brand's colour; AV, Live TV), **Wi-Fi**, **Settings**,
-  and a **bell** that appears only while the Play Store has app updates waiting (OK opens them in the Play Store),
+  and a **bell** that appears only while the Play Store has app updates waiting (OK opens them in the Play Store) or a newer Talkies is out (OK installs it),
   with the cricket score under them
 - A dock of seven apps in one frosted band. An app with no TV banner gets a tile made from its icon: its logo on its
   own colour, or its logo and name on white, like a TV banner
@@ -156,6 +156,14 @@ Then the same switches as below (Accessibility and notification access on the TV
 **Updates** installs each new release, with Android asking first. A Talkies you built yourself is signed with your
 own key, so it can't take them: back up your settings (`./backup-settings.sh`), uninstall it, install `talkies.apk`,
 switch Accessibility and notification access on again, and restore (`./restore-settings.sh`).
+
+**The first update:** Android asks to allow Talkies to install apps (Settings → Apps → Special app access → Install
+unknown apps → Talkies). That closes Talkies, so press OK on Updates (or the bell) again afterwards. If it keeps
+sending you back to that switch although it's on, this TV's Settings left an old "deny" behind; this clears it:
+
+```bash
+adb -s 192.168.1.20:5555 shell appops set com.techpp.glass REQUEST_INSTALL_PACKAGES allow
+```
 
 ## Install by hand
 
