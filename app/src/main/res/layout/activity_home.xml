@@ -47,6 +47,16 @@
                 <TextView android:id="@+id/tab_trending" style="@style/TabText" android:layout_marginStart="2dp" android:text="Trending" />
                 <TextView android:id="@+id/tab_india" style="@style/TabText" android:layout_marginStart="2dp" android:text="New in India" />
             </LinearLayout>
+
+            <!-- Only while there are no picks to show: why (no TMDB key yet, or offline) -->
+            <TextView
+                android:id="@+id/picks_hint"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="40dp"
+                android:fontFamily="@font/outfit"
+                android:textSize="15sp"
+                android:visibility="gone" />
         </LinearLayout>
 
         <!-- Header, right: icon buttons, then time · date · weather -->
@@ -56,12 +66,17 @@
             android:layout_gravity="end|top"
             android:layout_marginTop="24dp"
             android:layout_marginEnd="40dp"
+            android:clipChildren="false"
+            android:clipToPadding="false"
             android:gravity="end"
             android:orientation="vertical">
 
+            <!-- Not clipped: a focused icon grows past the row's edges -->
             <LinearLayout
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
+                android:clipChildren="false"
+                android:clipToPadding="false"
                 android:orientation="horizontal">
                 <!-- RAM and storage free, unless hidden in Talkies settings -->
                 <com.techpp.glass.Meters android:id="@+id/meters" android:layout_width="112dp"

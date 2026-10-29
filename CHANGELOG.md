@@ -3,6 +3,24 @@
 Versions are numbered *major.minor.fix*. While Talkies is in beta they start with 0: a new minor number brings new
 features, a new fix number only fixes. The version shows in Talkies settings → About.
 
+## 1.0.3 — 29 October 2026
+
+### Fixed
+- **For you no longer starts blank** on a new TV ([#4](https://github.com/rajupp/talkies/issues/4)). With no picks yet
+  the row waited on Trending, so Continue filling in later didn't show until For you was turned off and on.
+- **The focused icon at the top right isn't cut off** ([#3](https://github.com/rajupp/talkies/issues/3)): it grows a
+  little when focused, and its row clipped it.
+- **Screensaver** in Control Center opens the screensaver settings (Start now) on devices that don't let apps start it,
+  such as the Google TV Streamer ([#7](https://github.com/rajupp/talkies/issues/7)).
+
+### New
+- **An empty For you says why**: no TMDB key yet (and where to add one), or not online yet
+  ([#6](https://github.com/rajupp/talkies/issues/6)).
+- **Finish setup → Switch greyed out?** on Android 13 and newer, which grey out the Accessibility and notification
+  switches for an installed APK: it opens App info, and the README has the command for TVs without the option
+  ([#5](https://github.com/rajupp/talkies/issues/5)).
+- **README fixes** for "App not installed.", no weather, Inputs showing only Live TV, and the restricted setting.
+
 ## 1.0.2 — 29 October 2026
 
 ### New

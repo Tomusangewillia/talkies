@@ -133,8 +133,11 @@ opens its switch.
 | **4. Keys and weather** (optional) | Talkies settings → **Keys and location → Send from your phone** | Scan the QR code with your phone and paste a free [TMDB](https://www.themoviedb.org/settings/api) key (picks), a free [CricketData](https://cricketdata.org) key (cricket) and your town (weather) |
 
 > [!TIP]
-> **Android 13 and newer** grey out the Accessibility switch for apps installed from a file. Open Settings → Apps →
-> Talkies, choose **Allow restricted settings** from its menu, then turn the switch on.
+> **Android 13 and newer** (Google TV Streamer, newer TVs) grey out the Accessibility and Notification access
+> switches for apps installed from a file. Open Settings → Apps → Talkies and choose **Allow restricted settings**
+> from its menu, then turn the switches on. No such option (Google TV Streamer)? From a computer, once:
+> `adb shell appops set com.techpp.glass ACCESS_RESTRICTED_SETTINGS allow`. Finish setup shows a
+> **Switch greyed out?** row for this.
 
 > [!NOTE]
 > Android shows the same strong warning for every accessibility service. Talkies' service filters only the Home
@@ -184,9 +187,14 @@ Control Center and remote-button remapping. They work together: run CleanYourTV 
 | What you see | Why, and the fix |
 |---|---|
 | **Home opens Google TV** (or the TV's own launcher) | The Talkies Accessibility switch is off ([First-time setup](#first-time-setup), step 1). A force stop turns it off; with the optional `pm grant` from the install, Talkies turns it back on by itself. |
-| **No picks** under Trending | No TMDB key yet, or the first fetch is still running: picks arrive within a minute of opening Talkies with the TV online. |
+| **Accessibility switch greyed out**, or "Restricted setting" | Android 13 and newer: see the tip under [First-time setup](#first-time-setup). On a Google TV Streamer it needs the one `adb` command there. |
+| **No Trending or New tabs**, only Continue | No TMDB key yet: Talkies settings → **Keys and location** → *Send from your phone*. With a key, picks arrive within a minute of opening Talkies with the TV online. |
+| **No weather** | Talkies needs your town for it: Talkies settings → **Keys and location**. |
 | **Continue stays empty** | Notification access or the Watch Next permission is missing: Talkies settings → **Finish setup**. |
 | **Google Play Protect blocks the install** | Choose *More details* → *Install anyway*. Talkies isn't on the Play Store, so Protect doesn't know it. |
+| **"App not installed."** | Usually a Talkies you built yourself is already on the TV, signed with another key: see *Coming from a version you built yourself* under [Updates](#updates). Otherwise, free some storage and try again. |
+| **Inputs shows only Live TV** | Your device has no HDMI inputs of its own (a streamer like the Google TV Streamer or Shield). On a TV, its HDMI ports are listed. |
+| **Screensaver** opens settings instead | Some devices (Google TV Streamer) don't let apps start the screensaver directly: Talkies opens its settings, where **Start now** does. |
 | **"Google Assistant is having a problem"** | The Google TV launcher was disabled. From a computer: `adb shell pm enable com.google.android.apps.tv.launcherx` |
 | **Home opens a setup screen** | Google TV's setup wizard answers Home too: see [Google TV's setup wizard](docs/guide.md#google-tvs-setup-wizard). |
 | `INSTALL_FAILED_UPDATE_INCOMPATIBLE` | The installed Talkies was built on another computer: see *Coming from a version you built yourself* under [Updates](#updates). |

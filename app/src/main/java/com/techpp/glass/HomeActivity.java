@@ -188,6 +188,7 @@ public class HomeActivity extends Activity {
     /** Online at the last network change; null before the first. */
     private Boolean wasOnline;
     private View forYouHead, bigClock;
+    private TextView picksHint;
     private TextView bigTime, bigAmPm, bigDate, bigWeather;
     private View bigRule;
     private boolean inFront;
@@ -268,6 +269,7 @@ public class HomeActivity extends Activity {
         allAppsLabel = findViewById(R.id.all_apps_label);
         moveHint = findViewById(R.id.move_hint);
         picksRow = findViewById(R.id.picks);
+        picksHint = findViewById(R.id.picks_hint);
         ring = findViewById(R.id.ring);
         tabs = new TextView[]{findViewById(R.id.tab_recent), findViewById(R.id.tab_trending), findViewById(R.id.tab_india)};
         icons = new ImageView[]{findViewById(R.id.icon_cc), findViewById(R.id.icon_inputs), findViewById(R.id.icon_wifi),
@@ -344,6 +346,7 @@ public class HomeActivity extends Activity {
         meters.setColor(theme.text);
         bigRule.setBackgroundColor((theme.text2 & 0x00FFFFFF) | 0x66000000);
         allAppsLabel.setTextColor(theme.text);
+        picksHint.setTextColor(theme.text2);
         credit.setTextColor((theme.text2 & 0x00FFFFFF) | 0x99000000);
         GradientDrawable band = new GradientDrawable();
         band.setCornerRadius(px(30));
@@ -1081,6 +1084,7 @@ public class HomeActivity extends Activity {
             rowPicks = new ArrayList<>();
             picksRow.setItems(new ArrayList<>(), 0);
             picksRow.setVisibility(View.GONE);
+            showPicksHint();
             styleTop();
             updateAmbient();
             return;
@@ -1097,8 +1101,19 @@ public class HomeActivity extends Activity {
         picksRow.setItems(views, anchor);
         updatePickImages(picksRow.anchor());
         picksRow.setVisibility(rowPicks.isEmpty() ? View.INVISIBLE : View.VISIBLE);
+        showPicksHint();
         styleTop();
         updateAmbient();
+    }
+
+    /** Nothing to show yet: say why, rather than leave a gap. Without a TMDB key only Continue ever fills. */
+    private void showPicksHint() {
+        boolean show = forYou && rowPicks.isEmpty();
+        picksHint.setVisibility(show ? View.VISIBLE : View.GONE);
+        if (!show) return;
+        picksHint.setText(Keys.read(this, Keys.TMDB) == null
+                ? "Trending and new picks need a free TMDB key: Control Center → Talkies settings → Keys and location"
+                : "Picks appear here once Talkies is online. Shows you watch show up under Continue.");
     }
 
     /** A pick: the image card (with a progress bar when the app shares one), its title, and a description line. */
@@ -1288,7 +1303,8 @@ public class HomeActivity extends Activity {
                 List<Trending.Pick> merged = continuePicks(RecentStore.load(this), watchNextPicks);
                 if (!sameKeys(recentPicks, merged)) {
                     recentPicks = merged;
-                    if (tabIdx == 0 && zone != Z_PICKS) buildPicksRow(0);
+                    // Also when the row is empty: on a new TV it waits on Trending, which may never fill (no key).
+                    if ((tabIdx == 0 || rowPicks.isEmpty()) && zone != Z_PICKS) buildPicksRow(0);
                     else styleTop();
                 }
             });
@@ -2543,6 +2559,14 @@ public class HomeActivity extends Activity {
             if (pm.resolveActivity(i, 0) == null) i = new Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS);
             start(i);
         }, false);
+        // Android 13 and later grey out these switches for an app installed from an APK, until allowed in App info
+        // (or with one adb command where the TV's App info doesn't offer it: README → Questions and fixes).
+        if (Build.VERSION.SDK_INT >= 33 && (!SleepService.isRunning() || !notificationAccess()))
+            addRow("Switch greyed out?", "App info → Allow restricted settings", () -> {
+                Toast.makeText(this, "Look for Allow restricted settings here. Not there? The README's Questions and fixes "
+                        + "has the one command that allows it", Toast.LENGTH_LONG).show();
+                start(new Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS, Uri.parse("package:" + getPackageName())));
+            }, false);
         if (!notificationAccess()) addRow("Notification access", "Continue, Now playing, the bell", () -> {
             Toast.makeText(this, "Switch on Talkies here", Toast.LENGTH_LONG).show();
             start(new Intent(Settings.ACTION_NOTIFICATION_LISTENER_SETTINGS));
@@ -2909,8 +2933,15 @@ public class HomeActivity extends Activity {
             if (pm.resolveActivity(i, 0) == null) i = new Intent(Settings.ACTION_SOUND_SETTINGS);
             start(i);
         }, false);
-        addRow("Screensaver", null, () -> start(new Intent(Intent.ACTION_MAIN)
-                .setClassName("com.android.systemui", "com.android.systemui.Somnambulator")), false);
+        addRow("Screensaver", null, () -> {
+            Intent dream = new Intent(Intent.ACTION_MAIN).setClassName("com.android.systemui", "com.android.systemui.Somnambulator");
+            // Not on every TV (Google TV Streamer): its screensaver settings instead, which have Start now.
+            if (pm.resolveActivity(dream, 0) == null) {
+                Toast.makeText(this, "Choose Start now to start the screensaver", Toast.LENGTH_LONG).show();
+                dream = new Intent(Settings.ACTION_DREAM_SETTINGS);
+            }
+            start(dream);
+        }, false);
         // The TV's own power menu, so it still asks before restarting.
         addRow("Restart…", null, () -> { if (!SleepService.powerMenu()) needsTurnOffSetup(); }, false);
         showMenu(350);
@@ -3371,7 +3402,7 @@ public class HomeActivity extends Activity {
         // Something new may have been watched while we were away.
         List<Trending.Pick> before = recentPicks;
         recentPicks = continuePicks(RecentStore.load(this), watchNextPicks);
-        if (!sameKeys(before, recentPicks) && tabIdx == 0) buildPicksRow(0);
+        if (!sameKeys(before, recentPicks) && (tabIdx == 0 || rowPicks.isEmpty())) buildPicksRow(0);
         refreshWatchNext();
         getContentResolver().registerContentObserver(TvContract.WatchNextPrograms.CONTENT_URI, true, watchNextChanged);
     }
