@@ -3,6 +3,14 @@
 Versions are numbered *major.minor.fix*. While Talkies is in beta they start with 0: a new minor number brings new
 features, a new fix number only fixes. The version shows in Talkies settings → About.
 
+## 1.1.0 — 29 October 2026
+
+### New
+- **Dock size**, in Talkies settings: 5, 6, 7, 8, 9 or 10 apps. The tiles grow or shrink to fill the width (seven to
+  start, as before).
+- **An All apps button** at the end of the dock: Right past the last app, then OK, goes straight to All apps instead of
+  down past every channel row.
+
 ## 1.0.3 — 29 October 2026
 
 ### Fixed

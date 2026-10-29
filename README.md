@@ -23,7 +23,8 @@
 ## What you get
 
 - **No ads, no sponsored rows, no tracking.** Talkies shows your apps and what you choose, nothing else.
-- **Your apps** in a dock of seven, the rest under All apps. Hold OK on any app to move, hide or uninstall it.
+- **Your apps** in a dock of 5 to 10 (seven to start), the rest a click away with the **All apps** button at its end. Hold OK on
+  any app to move, hide or uninstall it.
 - **For You:** what's trending on *your* streaming apps in *your* country, what's new there, and Continue watching.
   Only titles that stream on a subscription you can use; hide it for a big clean clock instead.
 - **Live cricket and football** on the home screen, with your country's teams and leagues first.
@@ -43,7 +44,7 @@ stay on "English (United States)" wherever they are), and almost everything on t
 |---|---|---|
 | **Weather** | °C or °F; day and night follow your sunrise and sunset | The area (a town or `lat,lon`), in Talkies settings → Keys and location |
 | **For You** | Trending and *New in your country* only show titles that stream on a subscription where you are | Show or hide it |
-| **Dock** | — | Which seven apps, and their order: hold OK on an app to add, remove or move it |
+| **Dock** | — | How many apps (Talkies settings → **Dock size**, 5 to 10), which ones and their order: hold OK on an app to add, remove or move it |
 | **Cricket** | Your team's matches first, then other internationals and your domestic competitions (IPL, Ranji Trophy… in India) | On or off |
 | **Football** | Your country's leagues by default (Premier League, Champions League and ISL in India; MLS first in the US…) | Pick any leagues |
 | **Channels, keys, look** | — | Which channel rows and their order, what each remote button does (tap and hold), Light, Dark or Auto, wallpaper |

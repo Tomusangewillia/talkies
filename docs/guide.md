@@ -30,7 +30,7 @@ everything they do can also be done on the TV, in Talkies settings.
 | Icon buttons | — | Tabs (or the dock when there are no picks) | Next button; stops at the ends | Open | Dock |
 | Tabs | Icon buttons | Picks | Switch tab; stops at the ends | Picks | Dock |
 | Picks | Tabs | Dock | Next pick (it grows, the row slides); stops at the ends | Open it | Dock |
-| Dock | Picks (or the icon buttons) | First channel (or All apps) | Next app; stops at the ends | Launch (hold: dock, Move, Hide, Uninstall, App info) | — |
+| Dock | Picks (or the icon buttons) | First channel (or All apps) | Next app; past the last, the round **All apps** button | Launch (hold: dock, Move, Hide, Uninstall, App info); on the All apps button, jump to All apps | — |
 | Channels | Row above (the dock from the first) | Row below (All apps after the last) | Next card; the row slides | Open that title | Dock |
 | All apps | One row up (the last channel from the top row) | One row down | Next app in the row | Launch (hold: dock, Move, Hide, Uninstall, App info) | Dock |
 | Inputs / Control Center / settings | Previous (from the first, the last) | Next (from the last, the first) | Close | Choose | Close |
@@ -70,6 +70,7 @@ Control Center → **Talkies settings**, or **hold OK on the ⚙ icon** (a press
 | Keys and location | Your TMDB key (picks), CricketData key (scores) and weather area. **Send from your phone** shows a QR code: scan it with a phone on the same Wi-Fi and paste them into the page it opens (it works once, for 5 minutes, only on your home network, and the keys stay on the TV). Or type or paste each one; keys are tried with the service first and only saved if it accepts them. **Remove** clears one |
 | Appearance | Cycles Auto (light by day, dark at night) → Light → Dark. With a wallpaper, Auto picks the look that suits the photo instead, and every look adds just enough veil behind the text to keep it readable |
 | For You | Shown or Hidden. Hidden removes the tabs and picks (the weather, time and date stay, larger), Up from the dock goes to the icons, and TMDB picks aren't fetched |
+| Dock size | 5, 6, 7 (default), 8, 9 or 10 apps. The tiles grow or shrink so the dock always fills the screen's width; apps that no longer fit move to the front of All apps, and come back when it grows again |
 | RAM and storage | Shown (default) or Hidden: the two meters beside the icon buttons, with free RAM and free storage, updated every minute |
 | Live scores | Cricket and football (default), Cricket, Football or Off: what the score line and the score rows show |
 | Football leagues | The leagues the Football row follows; see [Football](#football) |

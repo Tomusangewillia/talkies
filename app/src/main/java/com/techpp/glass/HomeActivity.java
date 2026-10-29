@@ -82,13 +82,15 @@ public class HomeActivity extends Activity {
     private static final String TAG = "GlassHome";
 
     // Where focus is.
-    private static final int Z_TOP = 0, Z_TABS = 1, Z_PICKS = 2, Z_DOCK = 3, Z_GRID = 4, Z_MENU = 5, Z_CHAN = 6;
+    private static final int Z_TOP = 0, Z_TABS = 1, Z_PICKS = 2, Z_DOCK = 3, Z_GRID = 4, Z_MENU = 5, Z_CHAN = 6, Z_ALL = 7;
     private static final int P_CONTROL = 0, P_INPUTS = 1, P_WIFI = 2, P_SETTINGS = 3, P_BELL = 4;
     private static final String[] TAB_IDS = {RecentStore.TAB, Trending.TRENDING, Trending.INDIA};
     private static final int TAB_TRENDING = 1, MIN_CONTINUE = 10, MAX_CONTINUE = 16, MAX_YOUTUBE = 2;
-    private static final int DOCK_SIZE = 7, GRID_COLS = 6;
+    private static final int GRID_COLS = 6;
+    /** How many apps the dock holds (Talkies settings → Dock size); the tiles shrink or grow to fit. */
+    private static final int[] DOCK_SIZES = {5, 6, 7, 8, 9, 10};
     // Geometry (dp, on a 960 × 540 dp screen).
-    private static final int DOCK_TILE_W = 112, DOCK_TILE_H = 63, GRID_TILE_W = 133, GRID_TILE_H = 75, GRID_GAP_X = 16,
+    private static final int DOCK_MAX_W = 146, DOCK_GAP = 12, ALL_BUTTON = 44, GRID_TILE_W = 133, GRID_TILE_H = 75, GRID_GAP_X = 16,
             GRID_GAP_Y = 18;
     // Channel rows, below the dock: header, a row of cards, the focused card's title and description.
     private static final int CHAN_TOP = 548, CHAN_ROW_H = 212, CH_W = 200, CH_H = 112, CH_GAP = 18, CRICKET_W = 280;
@@ -112,6 +114,8 @@ public class HomeActivity extends Activity {
     // Apps: the dock's seven first, then the rest in your order.
     private final List<AppEntry> apps = new ArrayList<>();
     private int dockCount;
+    /** The tile after the dock: OK goes to All apps, rather than down past every channel row. */
+    private View allTile;
     private final List<View> dockTiles = new ArrayList<>(), gridTiles = new ArrayList<>();
 
     // Channel rows.
@@ -278,8 +282,9 @@ public class HomeActivity extends Activity {
         onUpdates();
         picksRow.setOnFrame(this::snapRing);
 
-        // Banners are prepared at the size of the largest focused tile (an All apps tile at 110%).
-        AppEntry.setBannerSize(px(GRID_TILE_W * 1.10f), px(GRID_TILE_H * 1.10f));
+        // Banners are prepared at the size of the largest focused tile: an All apps tile at 110%, or the dock's
+        // largest (five apps) at 114%.
+        AppEntry.setBannerSize(px(Math.max(GRID_TILE_W * 1.10f, DOCK_MAX_W * 1.14f)), px(Math.max(GRID_TILE_H * 1.10f, DOCK_MAX_W * 9 / 16f * 1.14f)));
         trending = new Trending(this);
         weather = new Weather(this);
         bing = new Bing(this, background);
@@ -416,6 +421,16 @@ public class HomeActivity extends Activity {
             icons[i].setBackground(c);
             icons[i].setImageTintList(ColorStateList.valueOf(f ? theme.iconFocusFg : theme.text));
             icons[i].animate().scaleX(f ? 1.08f : 1f).scaleY(f ? 1.08f : 1f).setDuration(150).start();
+        }
+        if (allTile != null) {
+            boolean f = zone == Z_ALL;
+            GradientDrawable c = new GradientDrawable();
+            c.setShape(GradientDrawable.OVAL);
+            c.setColor(f ? theme.iconFocusBg : theme.iconBg);
+            if (!f) c.setStroke(px(1), theme.iconStroke);
+            allTile.setBackground(c);
+            ((ImageView) allTile).setImageTintList(ColorStateList.valueOf(f ? theme.iconFocusFg : theme.text));
+            allTile.animate().scaleX(f ? 1.12f : 1f).scaleY(f ? 1.12f : 1f).setDuration(150).start();
         }
         for (int i = 0; i < tabs.length; i++) {
             boolean selected = i == tabIdx, f = zone == Z_TABS && selected;
@@ -579,14 +594,15 @@ public class HomeActivity extends Activity {
             if (!seen.add(p)) continue;
             all.add(new AppEntry(ri.activityInfo, String.valueOf(ri.loadLabel(pm)).trim()));
         }
-        // Your arrangement (hold OK on an app to move it), else dock.xml; the dock fills up to seven.
+        // Your arrangement (hold OK on an app to move it), else dock.xml; the dock fills up to its size.
+        int dockSize = dockSize();
         List<String> dockPkgs = new ArrayList<>();
         String savedDock = prefs.getString("order_dock", null);
         if (savedDock != null) dockPkgs.addAll(Arrays.asList(savedDock.split(",")));
         for (String d : getResources().getStringArray(R.array.dock_packages)) if (!dockPkgs.contains(d)) dockPkgs.add(d);
         List<AppEntry> docked = new ArrayList<>();
         for (String p : dockPkgs) {
-            if (docked.size() >= DOCK_SIZE) break;
+            if (docked.size() >= dockSize) break;
             for (AppEntry a : all) if (a.pkg.equals(p)) { docked.add(a); break; }
         }
         all.removeAll(docked);
@@ -598,7 +614,7 @@ public class HomeActivity extends Activity {
             if (ib < 0) ib = Integer.MAX_VALUE;
             return ia != ib ? Integer.compare(ia, ib) : a.label.compareToIgnoreCase(b.label);
         });
-        while (docked.size() < DOCK_SIZE && !all.isEmpty()) docked.add(all.remove(0));
+        while (docked.size() < dockSize && !all.isEmpty()) docked.add(all.remove(0));
         apps.clear();
         apps.addAll(docked);
         apps.addAll(all);
@@ -606,16 +622,22 @@ public class HomeActivity extends Activity {
         Log.i(TAG, "apps=" + apps.size() + " dock=" + dockCount);
     }
 
+    private int dockSize() {
+        int n = prefs.getInt("dock_size", 7);
+        return n < DOCK_SIZES[0] || n > DOCK_SIZES[DOCK_SIZES.length - 1] ? 7 : n;
+    }
+
     private void reloadApps() {
         endMove(false);
         loadApps();
         buildAppViews();
         if (zone == Z_DOCK) focusDock(Math.min(dockIdx, dockCount - 1));
+        else if (zone == Z_ALL) { if (allTile != null) focusAllTile(); else focusDock(dockCount - 1); }
         else if (zone == Z_GRID) focusGrid(Math.min(gridIdx, gridTiles.size() - 1));
     }
 
     /** One app tile: its banner (or icon) on a rounded card. */
-    private View appTile(AppEntry app, int wDp, int hDp) {
+    private View appTile(AppEntry app, float wDp, float hDp) {
         FrameLayout card = new FrameLayout(this);
         card.setBackground(rounded(theme.tileBg, 0, 11));
         final float r = px(11);
@@ -640,17 +662,40 @@ public class HomeActivity extends Activity {
         return card;
     }
 
+    /** After the dock: a round button like the icons at the top, a little larger. Its look is set in styleTop. */
+    private View allAppsButton() {
+        ImageView b = new ImageView(this);
+        b.setImageResource(R.drawable.ic_apps);
+        b.setScaleType(ImageView.ScaleType.CENTER);
+        b.setContentDescription("All apps");
+        LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(px(ALL_BUTTON), px(ALL_BUTTON));
+        lp.gravity = android.view.Gravity.CENTER_VERTICAL;
+        b.setLayoutParams(lp);
+        return b;
+    }
+
     private void buildAppViews() {
         dock.removeAllViews();
         dockTiles.clear();
-        int inner = getResources().getDisplayMetrics().widthPixels - px(40) - px(36);
-        int gap = Math.max(0, (inner - DOCK_SIZE * px(DOCK_TILE_W)) / Math.max(1, DOCK_SIZE - 1));
+        // The dock's apps and, when any are left over, the round All apps button share the band's width: seven
+        // apps are 106 dp wide, five 146, ten 73.
+        boolean more = apps.size() > dockCount;
+        int n = dockSize();
+        float inner = getResources().getDisplayMetrics().widthPixels / dp - 40 - 36;
+        float w = Math.min(DOCK_MAX_W, (inner - (more ? n * DOCK_GAP + ALL_BUTTON : (n - 1) * DOCK_GAP)) / n);
+        float h = w * 9 / 16;
         for (int i = 0; i < dockCount; i++) {
-            View t = appTile(apps.get(i), DOCK_TILE_W, DOCK_TILE_H);
+            View t = appTile(apps.get(i), w, h);
             LinearLayout.LayoutParams lp = (LinearLayout.LayoutParams) t.getLayoutParams();
-            if (i > 0) lp.leftMargin = gap;
+            if (i > 0) lp.leftMargin = px(DOCK_GAP);
             dock.addView(t, lp);
             dockTiles.add(t);
+        }
+        allTile = more ? allAppsButton() : null;
+        if (allTile != null) {
+            LinearLayout.LayoutParams lp = (LinearLayout.LayoutParams) allTile.getLayoutParams();
+            lp.leftMargin = px(DOCK_GAP);
+            dock.addView(allTile, lp);
         }
         grid.removeAllViews();
         gridTiles.clear();
@@ -1458,6 +1503,14 @@ public class HomeActivity extends Activity {
         followRing(260);
     }
 
+    private void focusAllTile() {
+        zone = Z_ALL;
+        scrollPage(0);
+        setFocus(null, 1f, 0);  // no ring: the button fills in, like the icons at the top (styleTop)
+        updateAmbient();
+        styleTop();
+    }
+
     private void focusGrid(int i) {
         if (gridTiles.isEmpty()) return;
         zone = Z_GRID;
@@ -1500,9 +1553,9 @@ public class HomeActivity extends Activity {
     }
 
     /** Dock column (0–6) → grid column (0–5) and back, by position across the screen. */
-    private static int dockToGridCol(int c) { return Math.round(c * (GRID_COLS - 1) / (float) (DOCK_SIZE - 1)); }
+    private int dockToGridCol(int c) { return Math.round(c * (GRID_COLS - 1) / (float) Math.max(1, dockCount - 1)); }
 
-    private static int gridToDockCol(int c) { return Math.round(c * (DOCK_SIZE - 1) / (float) (GRID_COLS - 1)); }
+    private int gridToDockCol(int c) { return Math.round(c * Math.max(0, dockCount - 1) / (float) (GRID_COLS - 1)); }
 
     // ---------------------------------------------------------------- keys
 
@@ -1585,9 +1638,16 @@ public class HomeActivity extends Activity {
             case Z_DOCK:
                 if (left && dockIdx > 0) focusDock(dockIdx - 1);
                 else if (right && dockIdx < dockTiles.size() - 1) focusDock(dockIdx + 1);
+                else if (right && allTile != null) focusAllTile();
                 else if (up) { if (hasPicks) focusPicks(picksRow.anchor()); else focusTop(iconIdx); }
                 else if (down && !chanRows.isEmpty()) focusChan(0, chanCol[0]);
                 else if (down && !gridTiles.isEmpty()) focusGrid(Math.min(dockToGridCol(dockIdx), gridTiles.size() - 1));
+                break;
+            case Z_ALL:
+                if (left) focusDock(dockTiles.size() - 1);
+                else if (up) { if (hasPicks) focusPicks(picksRow.anchor()); else focusTop(iconIdx); }
+                else if (down && !chanRows.isEmpty()) focusChan(0, chanCol[0]);
+                else if (down) focusGrid(GRID_COLS - 1);
                 break;
             case Z_CHAN: {
                 int n = chanRows.get(chanIdx).items.size(), c = chanCol[chanIdx];
@@ -1642,6 +1702,9 @@ public class HomeActivity extends Activity {
                 break;
             case Z_GRID:
                 startFromTile(apps.get(dockCount + gridIdx).launchIntent());
+                break;
+            case Z_ALL:
+                focusGrid(0);
                 break;
         }
     }
@@ -2980,6 +3043,14 @@ public class HomeActivity extends Activity {
             tabIdx = TAB_TRENDING;
             buildPicksRow(0);
             if (forYou) refreshOnline();
+        }, true);
+        final View[] ds = new View[1];
+        ds[0] = addRow("Dock size", dockSize() + " apps", () -> {
+            int n = dockSize() + 1;
+            if (n > DOCK_SIZES[DOCK_SIZES.length - 1]) n = DOCK_SIZES[0];
+            prefs.edit().putInt("dock_size", n).apply();
+            setStatus(ds[0], n + " apps");
+            reloadApps();
         }, true);
         final View[] ms = new View[1];
         ms[0] = addRow("RAM and storage", meters.getVisibility() == View.VISIBLE ? "Shown" : "Hidden", () -> {
