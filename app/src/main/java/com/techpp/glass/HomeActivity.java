@@ -3339,7 +3339,8 @@ public class HomeActivity extends Activity {
     }
 
     private String wallpaperLabel() {
-        if (ownWallpaper()) return "Your picture";
+        String folder = prefs.getString("wall_folder_name", null);
+        if (ownWallpaper()) return folder != null ? "A picture a day from " + folder : "Your picture";
         return prefs.getBoolean("bing_wallpaper", false) ? "Picture of the day" : "Off";
     }
 
@@ -3358,6 +3359,7 @@ public class HomeActivity extends Activity {
             setStatus(bing[0], on ? (ownWallpaper() ? "On · after your picture" : "On") : "Off");
         }, true);
         if (ownWallpaper()) addRow("Remove your picture", prefs.getBoolean("bing_wallpaper", false) ? "back to Bing's" : null, () -> {
+            stopFolder();
             removeOwnWallpaper();
             loadWallpaper();
             Toast.makeText(this, "Your picture is removed", Toast.LENGTH_SHORT).show();
@@ -3412,12 +3414,18 @@ public class HomeActivity extends Activity {
     /** After a picture was saved for {@code pkg} (null: the wallpaper): show it, and say so. */
     private void pictureSaved(String pkg, boolean ok) {
         if (pkg == null) {
+            if (ok) stopFolder();
             Toast.makeText(this, ok ? "Your picture is the wallpaper now" : "Couldn't use that picture", Toast.LENGTH_SHORT).show();
             if (ok) loadWallpaper();
             return;
         }
         Toast.makeText(this, ok ? "Your picture is on " + labelOf(pkg) + " now" : "Couldn't use that picture", Toast.LENGTH_SHORT).show();
         if (ok) reloadApps();
+    }
+
+    /** Back to one picture: the folder no longer changes it. */
+    private void stopFolder() {
+        prefs.edit().remove("wall_folder").remove("wall_folder_name").remove("wall_folder_last").remove("wall_folder_day").apply();
     }
 
     private void removeOwnWallpaper() {
@@ -3529,6 +3537,7 @@ public class HomeActivity extends Activity {
 
     private static final int REQ_PICTURES = 9;
     private static final int MAX_PICTURES = 60;
+    private static final int MAX_FOLDERS = 6;
 
     /** Reading pictures: Android 13 and later ask for photos only, earlier versions for all of storage. */
     private String picturesPermission() {
@@ -3545,19 +3554,20 @@ public class HomeActivity extends Activity {
             return;
         }
         background.execute(() -> {
-            List<String[]> found = new ArrayList<>();  // uri, name, folder
+            List<String[]> found = new ArrayList<>();  // uri, name, folder, volume, folder id
             java.util.Set<String> volumes = Build.VERSION.SDK_INT >= 29
                     ? android.provider.MediaStore.getExternalVolumeNames(this) : java.util.Collections.singleton("external");
             List<long[]> order = new ArrayList<>();
             for (String vol : volumes) {
                 Uri base = android.provider.MediaStore.Images.Media.getContentUri(vol);
                 String[] cols = {android.provider.MediaStore.Images.Media._ID, android.provider.MediaStore.Images.Media.DISPLAY_NAME,
-                        android.provider.MediaStore.Images.Media.BUCKET_DISPLAY_NAME, android.provider.MediaStore.Images.Media.DATE_MODIFIED};
+                        android.provider.MediaStore.Images.Media.BUCKET_DISPLAY_NAME, android.provider.MediaStore.Images.Media.DATE_MODIFIED,
+                        android.provider.MediaStore.Images.Media.BUCKET_ID};
                 try (android.database.Cursor c = getContentResolver().query(base, cols, null, null,
                         android.provider.MediaStore.Images.Media.DATE_MODIFIED + " DESC")) {
                     while (c != null && c.moveToNext() && found.size() < MAX_PICTURES * 4) {
                         found.add(new String[]{android.content.ContentUris.withAppendedId(base, c.getLong(0)).toString(),
-                                c.getString(1), c.getString(2) == null ? "" : c.getString(2)});
+                                c.getString(1), c.getString(2) == null ? "" : c.getString(2), vol, c.getString(4)});
                         order.add(new long[]{c.getLong(3), found.size() - 1});
                     }
                 } catch (RuntimeException e) {
@@ -3574,16 +3584,23 @@ public class HomeActivity extends Activity {
     private void showTvPictures(List<String[]> pics) {
         final String target = pictureFor;
         beginMenu(settingsAt, pics.isEmpty() ? "No pictures on this TV"
-                : (target == null ? "Wallpaper" : labelOf(target)) + "  ·  OK on a picture to use it");
+                : target == null ? "Wallpaper  ·  OK on a folder or a picture" : labelOf(target) + "  ·  OK on a picture to use it");
         if (target != null) anchorToApp(target);
         if (pics.isEmpty()) {
             addRow("Copy pictures to Pictures or Downloads, or plug in a USB drive", null, () -> { }, true);
             showMenu(460);
             return;
         }
+        // The wallpaper can also come from a folder: a new picture from it each day. Each folder shows its newest.
+        java.util.Set<String> folders = new java.util.HashSet<>();
+        if (target == null) for (String[] pic : pics) {
+            if (pic[4] == null || folders.size() >= MAX_FOLDERS || !folders.add(pic[3] + "/" + pic[4])) continue;
+            String name = pic[2].isEmpty() ? "Pictures" : pic[2];
+            addThumb(addRow(name, "a new picture each day", () -> useFolder(pic[3], pic[4], name), false), Uri.parse(pic[0]));
+        }
         for (String[] pic : pics) {
             Uri uri = Uri.parse(pic[0]);
-            LinearLayout row = (LinearLayout) addRow(pic[1], pic[2], () -> {
+            View row = addRow(pic[1], pic[2], () -> {
                 if (target == null) Toast.makeText(this, "Setting the wallpaper…", Toast.LENGTH_SHORT).show();
                 background.execute(() -> {
                     boolean ok = savePicture(() -> {
@@ -3593,20 +3610,81 @@ public class HomeActivity extends Activity {
                     runOnUiThread(() -> pictureSaved(target, ok));
                 });
             }, false);
-            ImageView thumb = new ImageView(this);
-            thumb.setScaleType(ImageView.ScaleType.CENTER_CROP);
-            thumb.setBackground(rounded(theme.tileBg, 0, 4));
-            thumb.setClipToOutline(true);
-            LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(px(64), px(36));
-            lp.setMarginEnd(px(12));
-            lp.gravity = Gravity.CENTER_VERTICAL;
-            row.addView(thumb, 0, lp);
-            background.execute(() -> {
-                Bitmap t = thumbnail(uri);
-                if (t != null) runOnUiThread(() -> thumb.setImageBitmap(t));
-            });
+            addThumb(row, uri);
         }
         showMenu(520);
+    }
+
+    /** A small preview of the picture at the start of its row. */
+    private void addThumb(View row, Uri uri) {
+        ImageView thumb = new ImageView(this);
+        thumb.setScaleType(ImageView.ScaleType.CENTER_CROP);
+        thumb.setBackground(rounded(theme.tileBg, 0, 4));
+        thumb.setClipToOutline(true);
+        LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(px(64), px(36));
+        lp.setMarginEnd(px(12));
+        lp.gravity = Gravity.CENTER_VERTICAL;
+        ((LinearLayout) row).addView(thumb, 0, lp);
+        background.execute(() -> {
+            Bitmap t = thumbnail(uri);
+            if (t != null) runOnUiThread(() -> thumb.setImageBitmap(t));
+        });
+    }
+
+    /** Wallpaper → From this TV → a folder: its first picture now, then the next one each day. */
+    private void useFolder(String volume, String id, String name) {
+        prefs.edit().putString("wall_folder", volume + "/" + id).putString("wall_folder_name", name)
+                .remove("wall_folder_last").remove("wall_folder_day").apply();
+        Toast.makeText(this, "Setting the wallpaper…", Toast.LENGTH_SHORT).show();
+        nextFromFolder(() -> Toast.makeText(this, ownWallpaper() ? "A new picture from " + name + " each day"
+                : "Couldn't use a picture from " + name, Toast.LENGTH_SHORT).show());
+    }
+
+    private boolean folderBusy;
+
+    /**
+     * Once a day, the next picture from the wallpaper folder (in name order, round again after the last), saved like
+     * one you picked. A folder that's gone (a USB drive unplugged) leaves the last picture up.
+     */
+    private void nextFromFolder(Runnable then) {
+        String folder = prefs.getString("wall_folder", null);
+        java.util.Calendar now = java.util.Calendar.getInstance();
+        int today = now.get(java.util.Calendar.YEAR) * 1000 + now.get(java.util.Calendar.DAY_OF_YEAR);
+        if (folder == null || folderBusy || prefs.getInt("wall_folder_day", 0) == today) return;
+        folderBusy = true;
+        String last = prefs.getString("wall_folder_last", null);
+        background.execute(() -> {
+            String next = null;
+            try {
+                int cut = folder.lastIndexOf('/');
+                Uri base = android.provider.MediaStore.Images.Media.getContentUri(folder.substring(0, cut));
+                List<String> uris = new ArrayList<>();
+                try (android.database.Cursor c = getContentResolver().query(base, new String[]{android.provider.MediaStore.Images.Media._ID},
+                        android.provider.MediaStore.Images.Media.BUCKET_ID + "=?", new String[]{folder.substring(cut + 1)},
+                        android.provider.MediaStore.Images.Media.DISPLAY_NAME + " ASC")) {
+                    while (c != null && c.moveToNext()) uris.add(android.content.ContentUris.withAppendedId(base, c.getLong(0)).toString());
+                }
+                if (!uris.isEmpty()) next = uris.get((uris.indexOf(last) + 1) % uris.size());
+            } catch (RuntimeException e) {
+                Log.w(TAG, "Couldn't read the wallpaper folder: " + e);
+            }
+            final String pick = next;
+            boolean ok = pick != null && savePicture(() -> {
+                try { return getContentResolver().openInputStream(Uri.parse(pick)); }
+                catch (java.io.FileNotFoundException e) { throw new RuntimeException(e); }
+            }, null);
+            runOnUiThread(() -> {
+                folderBusy = false;
+                // Tried today either way: a folder that's gone is tried again tomorrow, not every minute.
+                if (prefs.getString("wall_folder", "").equals(folder)) {
+                    SharedPreferences.Editor e = prefs.edit().putInt("wall_folder_day", today);
+                    if (ok) e.putString("wall_folder_last", pick);
+                    e.apply();
+                }
+                if (ok) loadWallpaper();
+                if (then != null) then.run();
+            });
+        });
     }
 
     private Bitmap thumbnail(Uri uri) {
@@ -4268,6 +4346,7 @@ public class HomeActivity extends Activity {
         if (scores().equals("both") || scores().equals("football")) football.refreshIfStale(this::onFootball);
         weather.refreshIfStale(this::onWeather);
         if (prefs.getBoolean("bing_wallpaper", false)) bing.refreshIfStale(this::loadWallpaper);
+        nextFromFolder(null);  // no network needed, but the same moments: a new day's picture while you can see it
         if (forYou) trending.refreshIfStale(this::onPicks);
         // Once a day: is there a newer Talkies? Said once per version.
         background.execute(() -> {

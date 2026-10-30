@@ -87,7 +87,7 @@ Control Center → **Talkies settings**, or **hold OK on the ⚙ icon** (a press
 | Network debugging | "On · port 5555" while computers on your network can control the TV over ADB (how Talkies was installed). **Turn off** (needs the permission below) or open Developer options; turning it on again is done in Developer options |
 | Talkies at power-on | **After a restart** (default), or **Every time**: also when the TV wakes from standby into the last HDMI input or app. Pressing a button as it wakes keeps what's on screen |
 | Empty inputs | **Shown** (default), or **Under More inputs**: Inputs lists only ports with something plugged in, and a More inputs row brings back the rest |
-| Wallpaper | A picture of your own **from your phone** (a QR code) or **from this TV** (pictures on the TV or a USB drive), Bing's **picture of the day** (checked every few hours while Talkies is in front), or **Remove your picture**. See [Change the wallpaper](#change-the-wallpaper) |
+| Wallpaper | A picture of your own **from your phone** (a QR code) or **from this TV** (pictures on the TV or a USB drive, or a folder for a new picture each day), Bing's **picture of the day** (checked every few hours while Talkies is in front), or **Remove your picture**. See [Change the wallpaper](#change-the-wallpaper) |
 | Control Center shortcuts | Which screen Network, Bluetooth, Sound output and Storage open in Control Center: the TV's default, or any screen its settings apps offer (likely matches first, **Show every screen** for the rest). Useful where the TV keeps the useful page elsewhere |
 | Apps open from their tile | On by default: an app's window grows out of the tile or card you chose. It's Android's normal opening animation, started from the tile, so it costs nothing extra |
 | Home app | Shows the current home screen and opens Android's *Default home app* chooser (on Google TV the choice doesn't stick; see [Use another home screen](#use-another-home-screen)) |
@@ -360,6 +360,9 @@ the text to keep it readable.
   for 5 minutes.
 - **From this TV:** the newest pictures on the TV and any USB drive plugged into it (Pictures, Downloads, DCIM…),
   each with a small preview; OK on one uses it. Android asks once to let Talkies see your photos.
+- **A folder, a picture a day:** the folders come first in that list, each with its newest picture. OK on one uses
+  its first picture now and the next one each day, in name order, starting over after the last. Choosing a single
+  picture, or **Remove your picture**, stops it. If the folder is gone (a USB drive unplugged), the last picture stays.
 - **Picture of the day:** Bing's, checked every few hours. Your own picture wins while there is one.
 - **Remove your picture:** back to the glow (or to Bing's picture, when that's on).
 
