@@ -1571,6 +1571,15 @@ public class HomeActivity extends Activity {
         boolean back = k == KeyEvent.KEYCODE_BACK || k == KeyEvent.KEYCODE_ESCAPE;
         if (!select && !nav && !back) return super.dispatchKeyEvent(e);
         lastKeyAt = android.os.SystemClock.uptimeMillis();
+        // OK and Back act when let go, so a release whose press went to another app must do nothing here: an app
+        // that closes as OK goes down (Netflix → Exit) would otherwise have its OK's release open the focused tile,
+        // the same app, again.
+        if ((select || back) && e.getAction() == KeyEvent.ACTION_DOWN && e.getRepeatCount() == 0) pressedHere = k;
+        if ((select || back) && e.getAction() == KeyEvent.ACTION_UP) {
+            boolean ours = pressedHere == k;
+            pressedHere = 0;
+            if (!ours) return true;
+        }
         boolean onApp = zone == Z_DOCK || zone == Z_GRID || (zone == Z_MENU && menuMode == MENU_CHANNELS)
                 || continueCard() != null || (zone == Z_TOP && iconIdx == P_SETTINGS);
         // Holding OK on an app opens its menu, on a Continue card the card's menu, and in the Channels editor
@@ -4064,9 +4073,13 @@ public class HomeActivity extends Activity {
         serviceNote.setVisibility(show ? View.VISIBLE : View.GONE);
     }
 
+    /** The OK or Back button that went down while Talkies was in front (0: none), so only its release counts. */
+    private int pressedHere;
+
     @Override
     protected void onPause() {
         super.onPause();
+        pressedHere = 0;
         SleepService.learn(null);
         inFront = false;
     }
