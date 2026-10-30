@@ -3,7 +3,7 @@
 Versions are numbered *major.minor.fix*. While Talkies is in beta they start with 0: a new minor number brings new
 features, a new fix number only fixes. The version shows in Talkies settings → About.
 
-## Unreleased
+## 1.2.2 — 30 October 2026
 
 ### New
 - **All apps order** (Talkies settings): keep your own order, put the apps you opened most recently first, or sort
