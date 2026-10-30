@@ -14,6 +14,8 @@ features, a new fix number only fixes. The version shows in Talkies settings →
   streaming service TMDB lists for your country counts (Viaplay, Canal+, RTL+, Joyn, Stan…).
 - **Trending without streaming apps.** With none installed, the tabs still fill, and OK plays the title's trailer in
   YouTube, with where it streams under the card. Before, the row stayed empty.
+- **Hide spoilers** (Talkies settings, off by default): episodes in Continue you haven't started show the show's art
+  instead of the app's still from the episode, or the still blurred. An idea from @harrydbarnes.
 
 ### Fixed
 - **Home app names the launcher that has Home.** When another launcher you installed owns Home (CleanYourTV's, for

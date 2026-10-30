@@ -26,6 +26,9 @@ import java.util.Set;
  * that opens the right title or episode. Readable with the TV listings permissions on this TV. Only "continue" and
  * "next episode" entries are used; "new season" and watchlist entries are promotions, not things you watched.
  * Blocking (database + artwork downloads): call it off the main thread.
+ * Episodes you haven't started (the "next episode" entries) don't show the app's still from them, which can give the
+ * story away (Talkies settings → Hide spoilers): the app's poster when it's landscape, else the still blurred, with
+ * a portrait poster on the small cards. An idea from harrydbarnes (discussion #14).
  */
 final class WatchNext {
     private static final String TAG = "GlassWatchNext";
@@ -36,6 +39,7 @@ final class WatchNext {
     static List<Trending.Pick> load(Context c) {
         List<Trending.Pick> out = new ArrayList<>();
         File dir = new File(c.getExternalFilesDir(null), "recent/watchnext");
+        boolean hideSpoilers = hideSpoilers(c);
         Set<String> keep = new HashSet<>();
         String[] cols = {
                 TvContract.WatchNextPrograms.COLUMN_PACKAGE_NAME, TvContract.WatchNextPrograms.COLUMN_TITLE,
@@ -83,7 +87,20 @@ final class WatchNext {
                 p.at = cur.isNull(6) ? 0 : cur.getLong(6);
                 p.intentUri = str(cur, 10).isEmpty() ? null : str(cur, 10);
                 String art = !str(cur, 8).isEmpty() ? str(cur, 8) : str(cur, 9);
-                p.image = art.isEmpty() ? null : cached(c, dir, art);
+                if (hideSpoilers && type == TvContract.WatchNextPrograms.WATCH_NEXT_TYPE_NEXT) {
+                    String posterArt = str(cur, 9);
+                    File poster = posterArt.isEmpty() || posterArt.equals(str(cur, 8)) ? null : cached(c, dir, posterArt);
+                    if (poster != null && landscape(poster)) {
+                        p.image = poster;
+                    } else {
+                        File still = art.isEmpty() ? null : cached(c, dir, art);
+                        p.image = still == null ? null : blurred(still);
+                        if (still != null) keep.add(still.getName());  // kept, so the blur isn't redone each time
+                        if (poster != null) { p.poster = poster; keep.add(poster.getName()); }
+                    }
+                } else {
+                    p.image = art.isEmpty() ? null : cached(c, dir, art);
+                }
                 if (p.image != null) keep.add(p.image.getName());
                 out.add(p);
             }
@@ -96,6 +113,37 @@ final class WatchNext {
         if (files != null) for (File f : files) if (!keep.contains(f.getName())) f.delete();
         Log.i(TAG, out.size() + " to show");
         return out;
+    }
+
+    /** Talkies settings → Hide spoilers (off unless you turn it on: the app's own stills are what people expect). */
+    static boolean hideSpoilers(Context c) {
+        return c.getSharedPreferences("home", Context.MODE_PRIVATE).getBoolean("hide_spoilers", false);
+    }
+
+    private static boolean landscape(File f) {
+        BitmapFactory.Options o = new BitmapFactory.Options();
+        o.inJustDecodeBounds = true;
+        BitmapFactory.decodeFile(f.getPath(), o);
+        return o.outWidth > 0 && o.outWidth > o.outHeight;
+    }
+
+    /** A soft blur of the picture (shrunk to 32 px wide and grown back in steps), saved next to it once. */
+    private static File blurred(File src) {
+        File out = new File(src.getParentFile(), src.getName().replaceAll("\\.(jpg|png)$", "") + "_blur.jpg");
+        if (out.isFile()) return out;
+        try {
+            Bitmap b = BitmapFactory.decodeFile(src.getPath());
+            if (b == null) return null;
+            int w = 32, h = Math.max(1, b.getHeight() * w / b.getWidth());
+            Bitmap big = Bitmap.createScaledBitmap(b, w, h, true);
+            for (int k = 2; w * k <= 640; k *= 2) big = Bitmap.createScaledBitmap(big, w * k, h * k, true);  // doubling: no blocks
+            File tmp = new File(out.getPath() + ".part");
+            try (OutputStream o = new FileOutputStream(tmp)) { big.compress(Bitmap.CompressFormat.JPEG, 85, o); }
+            return tmp.renameTo(out) ? out : null;
+        } catch (Exception | OutOfMemoryError e) {
+            Log.w(TAG, "Blur failed: " + e.getClass().getSimpleName());
+            return null;
+        }
     }
 
     private static String str(Cursor c, int i) {

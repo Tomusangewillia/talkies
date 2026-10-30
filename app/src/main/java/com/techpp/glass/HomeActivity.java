@@ -3220,6 +3220,14 @@ public class HomeActivity extends Activity {
             buildPicksRow(0);
             if (forYou) refreshOnline();
         }, true);
+        final View[] sp = new View[1];
+        sp[0] = addRow("Hide spoilers", WatchNext.hideSpoilers(this) ? "On" : "Off", () -> {
+            boolean on = !WatchNext.hideSpoilers(this);
+            prefs.edit().putBoolean("hide_spoilers", on).apply();
+            setStatus(sp[0], on ? "On" : "Off");
+            recentPicks = new ArrayList<>();  // rebuild Continue with the other pictures
+            refreshWatchNext();
+        }, true);
         addRow("Dock apps", dockCount + " in the dock", this::openDockApps, false);
         final View[] ds = new View[1];
         ds[0] = addRow("Dock size", dockSize() + " apps", () -> {
