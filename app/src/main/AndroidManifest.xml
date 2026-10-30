@@ -10,6 +10,9 @@
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
     <!-- Recently watched: Android TV's Watch Next list (Netflix, Prime Video…). -->
     <uses-permission android:name="android.permission.READ_TV_LISTINGS" />
+    <!-- Talkies settings → Wallpaper → From this TV: pictures on the TV or a USB drive (asked only when you open it) -->
+    <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" android:maxSdkVersion="32" />
+    <uses-permission android:name="android.permission.READ_MEDIA_IMAGES" />
     <uses-permission android:name="com.android.providers.tv.permission.READ_EPG_DATA" />
     <!-- Trending picks: TMDB lists and backdrops. -->
     <uses-permission android:name="android.permission.INTERNET" />

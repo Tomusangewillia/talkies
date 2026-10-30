@@ -37,6 +37,9 @@ everything they do can also be done on the TV, in Talkies settings.
 
 **Home** always brings you back to the dock, at the top, on the Trending tab.
 
+**Navigation sounds:** Talkies plays Android's own click and move sounds when the TV's **System sounds** switch is on
+(Settings → Display & sound, or Sound), and is silent when it's off, like the rest of the TV.
+
 ## Control Center
 
 Go up to the icon buttons and choose the first one (sliders). It has what you reach for while watching; everything
@@ -56,8 +59,8 @@ you set once is in **Talkies settings**, at the top.
 | Network | Shows the Wi-Fi name (or Ethernet); OK opens Wi-Fi settings |
 | Speed test | A few seconds' download from Cloudflare's speed test; shows e.g. "206 Mbps" |
 | Bluetooth | Shows the connected speaker or headphones. OK lists your paired ones: OK on one connects or disconnects it; **Pair a new device** opens the TV's Bluetooth settings. Bluetooth can't be turned off here, since many remotes use it |
-| Sound output | Shows TV speakers or Soundbar (HDMI ARC) and opens the TV's Sound settings |
-| Screensaver | Starts the TV's screensaver right away. Not shown on devices that don't let apps start it (Google TV Streamer) |
+| Sound output | Shows *TV speakers*, or *Soundbar connected* when one is on HDMI ARC (Android doesn't say whether it's the one playing), and opens the TV's sound settings: on Sony, Display & sound, where Audio output chooses the speakers |
+| Screensaver | Starts the TV's screensaver right away, the way Google Assistant does (or through Android's own shortcut). Not shown on devices that offer apps neither |
 | Restart… | Opens the TV's own power menu, which asks before restarting. On some TVs (OnePlus) that menu puts the TV to sleep after 10 seconds if you choose nothing; Back closes it |
 
 ## Talkies settings
@@ -81,7 +84,7 @@ Control Center → **Talkies settings**, or **hold OK on the ⚙ icon** (a press
 | Network debugging | "On · port 5555" while computers on your network can control the TV over ADB (how Talkies was installed). **Turn off** (needs the permission below) or open Developer options; turning it on again is done in Developer options |
 | Talkies at power-on | **After a restart** (default), or **Every time**: also when the TV wakes from standby into the last HDMI input or app. Pressing a button as it wakes keeps what's on screen |
 | Empty inputs | **Shown** (default), or **Under More inputs**: Inputs lists only ports with something plugged in, and a More inputs row brings back the rest |
-| Bing wallpaper | Off by default. On: Bing's picture of the day as the wallpaper, checked every few hours while Talkies is in front (Talkies settings → About credits the photo). Your own `wallpaper.jpg` wins over it |
+| Wallpaper | A picture of your own **from your phone** (a QR code) or **from this TV** (pictures on the TV or a USB drive), Bing's **picture of the day** (checked every few hours while Talkies is in front), or **Remove your picture**. See [Change the wallpaper](#change-the-wallpaper) |
 | Apps open from their tile | On by default: an app's window grows out of the tile or card you chose. It's Android's normal opening animation, started from the tile, so it costs nothing extra |
 | Home app | Shows the current home screen and opens Android's *Default home app* chooser (on Google TV the choice doesn't stick; see [Use another home screen](#use-another-home-screen)) |
 | Sharp YouTube pictures | Off by default. On: YouTube cards in Continue get YouTube's 1280-pixel thumbnails, looked up by title and channel |
@@ -338,15 +341,25 @@ adb -s "$TALKIES_TV" shell cmd package query-activities --brief -a android.inten
 
 ## Change the wallpaper
 
-Copy an image to the launcher's folder on the TV. It can be `wallpaper.jpg`, `wallpaper.png` or `wallpaper.webp`; 1920×1080 works best.
+Talkies settings → **Wallpaper**. Your picture replaces the app-colour glow, and Talkies adds just enough veil behind
+the text to keep it readable.
+
+- **From your phone:** scan the QR code with your phone (on the same Wi-Fi as the TV) and choose a photo. Your phone
+  crops it to the screen and sends only that picture, without its location or other details. The page works once,
+  for 5 minutes.
+- **From this TV:** the newest pictures on the TV and any USB drive plugged into it (Pictures, Downloads, DCIM…),
+  each with a small preview; OK on one uses it. Android asks once to let Talkies see your photos.
+- **Picture of the day:** Bing's, checked every few hours. Your own picture wins while there is one.
+- **Remove your picture:** back to the glow (or to Bing's picture, when that's on).
+
+From a computer, copy an image to Talkies' folder instead. It can be `wallpaper.jpg`, `wallpaper.png` or
+`wallpaper.webp`; 1920×1080 works best:
 
 ```bash
 adb -s "$TALKIES_TV" push my-picture.jpg /sdcard/Android/data/com.techpp.glass/files/wallpaper.jpg
 ```
 
-Press Home on the remote to see it. It replaces the app-colour glow. No computer? Talkies settings → **Bing
-wallpaper** uses Bing's picture of the day instead (your own picture wins when both are there).
-To go back to pure black, delete the file:
+Press Home on the remote to see it. To remove it from a computer, delete the file:
 
 ```bash
 adb -s "$TALKIES_TV" shell rm /sdcard/Android/data/com.techpp.glass/files/wallpaper.jpg

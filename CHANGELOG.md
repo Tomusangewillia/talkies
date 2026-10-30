@@ -3,6 +3,26 @@
 Versions are numbered *major.minor.fix*. While Talkies is in beta they start with 0: a new minor number brings new
 features, a new fix number only fixes. The version shows in Talkies settings → About.
 
+## Unreleased
+
+### New
+- **Your own wallpaper, without a computer**: Talkies settings → **Wallpaper**.
+  - **From your phone:** scan a QR code and choose a photo. Your phone crops it to the screen and sends just that
+    picture, without its location or other details.
+  - **From this TV:** pick from the newest pictures on the TV or a USB drive, with previews. Android asks once for
+    access to your photos.
+  - **Picture of the day** (Bing's) and **Remove your picture** are in the same menu, which replaces the Bing
+    wallpaper row.
+- **Navigation sounds**: Android's click and move sounds, when the TV's System sounds switch is on.
+
+### Fixed
+- **Screensaver works on the Google TV Streamer** and other devices without Android's screensaver shortcut
+  ([#7](https://github.com/rajupp/talkies/issues/7)): Talkies starts it the way Google Assistant does (an idea from
+  [tvOS Launcher](https://github.com/techgenius1/tvOS-Launcher)), so the button is back where 1.1.2 had to hide it.
+- **Sound output** says *Soundbar connected* rather than *Soundbar*: Android shows a soundbar is plugged in, not that
+  it's playing. On Sony TVs it opens Display & sound, where Audio output chooses the speakers, instead of a page with
+  only System sounds.
+
 ## 1.1.3 — 30 October 2026
 
 ### Fixed

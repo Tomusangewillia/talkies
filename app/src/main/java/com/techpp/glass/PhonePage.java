@@ -35,6 +35,10 @@ import java.util.concurrent.atomic.AtomicInteger;
  * POST), has the TV check each key with its service, answers with the result and stops; after 5 minutes it stops
  * anyway. Plain HTTP, since a phone can't check a certificate for a LAN address; it listens only on that address, and
  * nothing sent is logged. Adapted from Free My TV's KeyPage (MIT).
+ *
+ * Its other job (Talkies settings → Wallpaper → From your phone): a page to pick a photo, which the phone itself crops
+ * to the TV's 16:9 and re-encodes as a 1920 × 1080 JPEG (so it arrives small, without the photo's location or other
+ * details), then sends as the one POST.
  */
 final class PhonePage {
     private static final String TAG = "GlassPhonePage";
@@ -47,14 +51,18 @@ final class PhonePage {
         List<String> accept(Map<String, String> fields);
         /** The page stopped: after the form, after 5 minutes (expired) or close(). Called once. */
         void closed(boolean expired);
+        /** The wallpaper page's photo, a JPEG: saves it and says how it went. */
+        default List<String> acceptWallpaper(byte[] jpeg) { return null; }
     }
 
     static final long OPEN_FOR = 5 * 60_000L;
-    private static final int MAX_HEAD = 8192, MAX_BODY = 4096, MAX_REQUESTS = 100, MAX_ANSWERING = 4;
+    private static final int MAX_HEAD = 8192, MAX_BODY = 4096, MAX_IMAGE = 8 << 20, MAX_REQUESTS = 100, MAX_ANSWERING = 4;
     /** A whole request (head and body), not each read: a client trickling bytes can't keep a thread for long. */
     private static final long READ_FOR_NS = 15_000_000_000L;
 
     final String url;
+    /** The wallpaper page rather than the keys page. */
+    private final boolean wallpaper;
     private final ServerSocket server;
     private final String path;
     private final Listener listener;
@@ -62,8 +70,11 @@ final class PhonePage {
     private final AtomicInteger answering = new AtomicInteger();
     private volatile boolean closed;
 
-    PhonePage(InetAddress lan, Listener listener) throws IOException {
+    PhonePage(InetAddress lan, Listener listener) throws IOException { this(lan, false, listener); }
+
+    PhonePage(InetAddress lan, boolean wallpaper, Listener listener) throws IOException {
         this.listener = listener;
+        this.wallpaper = wallpaper;
         byte[] random = new byte[12];
         new SecureRandom().nextBytes(random);
         path = "/" + Base64.getUrlEncoder().withoutPadding().encodeToString(random);
@@ -176,7 +187,7 @@ final class PhonePage {
             return false;
         }
         if (method.equals("GET") || method.equals("HEAD")) {
-            respond(out, "200 OK", "text/html; charset=utf-8", method.equals("HEAD") ? new byte[0] : form());
+            respond(out, "200 OK", "text/html; charset=utf-8", method.equals("HEAD") ? new byte[0] : wallpaper ? photoForm() : form());
             return false;
         }
         if (!method.equals("POST")) {
@@ -184,7 +195,7 @@ final class PhonePage {
             return false;
         }
         int length = contentLength(head);
-        if (length < 0 || length > MAX_BODY) {
+        if (length < 0 || length > (wallpaper ? MAX_IMAGE : MAX_BODY)) {
             respond(out, "413 Payload Too Large", "text/plain; charset=utf-8", new byte[0]);
             return false;
         }
@@ -194,10 +205,21 @@ final class PhonePage {
             if (got < 0 || System.nanoTime() > deadline) throw new IOException("cut short");
             n += got;
         }
+        // The wallpaper page sends what the phone's own browser made: a JPEG, or nothing worth keeping.
+        if (wallpaper && (length < 3 || (body[0] & 0xFF) != 0xFF || (body[1] & 0xFF) != 0xD8 || (body[2] & 0xFF) != 0xFF)) {
+            respond(out, "415 Unsupported Media Type", "text/html; charset=utf-8",
+                    result(java.util.Collections.singletonList("That didn't arrive as a picture."), false));
+            return false;
+        }
         // Stopped meanwhile (the dialog closed, 5 minutes), or two at once: only the first, while it shows, counts.
         if (closed || !taken.compareAndSet(false, true)) {
             respond(out, "409 Conflict", "text/html; charset=utf-8", result(null));
             return false;
+        }
+        if (wallpaper) {
+            listener.checking();
+            respond(out, "200 OK", "text/html; charset=utf-8", result(listener.acceptWallpaper(body)));
+            return true;
         }
         String form = new String(body, StandardCharsets.US_ASCII);
         Map<String, String> fields = new LinkedHashMap<>();
@@ -280,6 +302,34 @@ final class PhonePage {
         return bottom(b);
     }
 
+    /**
+     * Pick a photo; the phone crops it to fill a 16:9 screen, shows it, and sends a 1920 × 1080 JPEG. Needs the
+     * browser's JavaScript, which every phone has.
+     */
+    private byte[] photoForm() {
+        StringBuilder b = top();
+        b.append("<p>Choose a photo. It's cropped to fit the TV screen here on your phone, then sent to the TV.</p>")
+                .append("<input type=file id=f accept=\"image/*\">")
+                .append("<img id=p alt=\"\" style=\"display:none;width:100%;margin-top:16px;border-radius:10px\">")
+                .append("<button id=b disabled>Send to the TV</button>")
+                .append("<p class=s id=m>Only the cropped picture goes to your TV, without its location or other details. "
+                        + "This page works once, for 5 minutes.</p>")
+                .append("<script>const f=document.getElementById('f'),p=document.getElementById('p'),b=document.getElementById('b'),")
+                .append("m=document.getElementById('m');let blob=null;")
+                .append("f.onchange=()=>{const file=f.files[0];if(!file)return;m.textContent='Preparing…';b.disabled=true;")
+                .append("const i=new Image();i.onload=()=>{const W=1920,H=1080,s=Math.max(W/i.width,H/i.height),")
+                .append("c=document.createElement('canvas');c.width=W;c.height=H;const w=i.width*s,h=i.height*s;")
+                .append("c.getContext('2d').drawImage(i,(W-w)/2,(H-h)/2,w,h);c.toBlob(x=>{blob=x;p.src=URL.createObjectURL(x);")
+                .append("p.style.display='block';b.disabled=false;m.textContent='This is how it fits the TV.'},'image/jpeg',0.88)};")
+                .append("i.onerror=()=>{m.textContent='Your phone couldn\\'t open that picture. Try another one.'};")
+                .append("i.src=URL.createObjectURL(file)};")
+                .append("b.onclick=async()=>{if(!blob)return;b.disabled=true;m.textContent='Sending…';try{")
+                .append("const r=await fetch(location.pathname,{method:'POST',headers:{'Content-Type':'image/jpeg'},body:blob});")
+                .append("document.open();document.write(await r.text());document.close()}catch(e){")
+                .append("m.textContent='Couldn\\'t reach the TV. Is your phone on the same Wi-Fi?';b.disabled=false}};</script>");
+        return bottom(b);
+    }
+
     private static String box(String name, String label, String help, boolean code) {
         return "<label for=" + name + ">" + label + "</label><p class=s>" + help + "</p><input id=" + name + " name=" + name
                 + " autocomplete=off autocapitalize=off autocorrect=off spellcheck=false"
@@ -287,13 +337,17 @@ final class PhonePage {
     }
 
     /** The TV's answer, a line per field; null: the page had already stopped. */
-    private byte[] result(List<String> lines) {
+    private byte[] result(List<String> lines) { return result(lines, true); }
+
+    /** done false: the page is still open for another try. */
+    private byte[] result(List<String> lines, boolean done) {
         StringBuilder b = top();
         if (lines == null) {
             b.append("<p class=no>This code has expired. On the TV, open Send from your phone again.</p>");
         } else {
             for (String l : lines) b.append("<p>").append(esc(l)).append("</p>");
-            b.append("<p class=s>You can close this page.</p>");
+            b.append(done ? "<p class=s>You can close this page.</p>"
+                    : "<p class=s>Go back, choose another photo and send it again.</p>");
         }
         return bottom(b);
     }
@@ -307,7 +361,7 @@ final class PhonePage {
                 .append("input.code{font-family:monospace}p.s{color:#98989d;font-size:15px;margin:2px 0 8px}")
                 .append("button{display:block;box-sizing:border-box;width:100%;margin:24px 0 14px;padding:14px;border:0;")
                 .append("border-radius:12px;background:#f5f5f7;color:#1c1c1e;font:600 17px system-ui,sans-serif}")
-                .append(".no{color:#ffc266;font-size:20px}</style><h1>Talkies</h1>");
+                .append(".no{color:#ffc266;font-size:20px}button:disabled{opacity:.4}</style><h1>Talkies</h1>");
     }
 
     private static byte[] bottom(StringBuilder b) {

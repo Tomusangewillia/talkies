@@ -1588,7 +1588,9 @@ public class HomeActivity extends Activity {
         }
         if (nav && e.getAction() == KeyEvent.ACTION_DOWN) {
             heldKey = e.getRepeatCount() > 0;
+            String before = focusSignature();
             if (moving) moveApp(k); else if (menuMoving) moveMenuRow(k); else move(k);
+            if (!before.equals(focusSignature())) navigationSound(k);
         }
         if ((select || back) && e.getAction() == KeyEvent.ACTION_UP && !e.isCanceled()) {
             if (moving) endMove(select);
@@ -1672,7 +1674,41 @@ public class HomeActivity extends Activity {
         }
     }
 
+    /**
+     * What starts the screensaver now: Google TV Settings' "start screensaver" voice action (what the Assistant uses;
+     * also on devices without SystemUI's shortcut, like the Google TV Streamer), else SystemUI's Somnambulator.
+     * Null where neither exists: Control Center leaves the row out. The voice action idea is from tvOS Launcher.
+     */
+    private Intent screensaverIntent() {
+        // In a task of its own: it's part of the TV's Settings app, and in Settings' own task a settings page left open
+        // in the background would be what waking the TV shows, instead of Talkies.
+        Intent voice = new Intent("com.google.android.pano.action.SLEEP")
+                .addFlags(Intent.FLAG_ACTIVITY_MULTIPLE_TASK | Intent.FLAG_ACTIVITY_NO_ANIMATION);
+        ResolveInfo r = pm.resolveActivity(voice, 0);
+        if (r != null && r.activityInfo != null && !r.activityInfo.name.contains("EmptyStub")) return voice;
+        Intent dream = new Intent(Intent.ACTION_MAIN).setClassName("com.android.systemui", "com.android.systemui.Somnambulator");
+        return pm.resolveActivity(dream, 0) != null ? dream : null;
+    }
+
+    /** Where focus is: changes whenever a move took it somewhere, so a press at an end makes no sound. */
+    private String focusSignature() {
+        return zone + "," + iconIdx + "," + tabIdx + "," + picksRow.anchor() + "," + dockIdx + "," + gridIdx + "," + chanIdx
+                + "," + (chanIdx < chanCol.length ? chanCol[chanIdx] : 0) + "," + menuIdx + "," + appIndex();
+    }
+
+    /**
+     * Android's own navigation and click sounds. Talkies takes the remote's presses itself, so Android doesn't play
+     * them; they follow the TV's System sounds switch (off: silent), as everywhere else on the TV.
+     */
+    private void navigationSound(int k) {
+        root.playSoundEffect(k == KeyEvent.KEYCODE_DPAD_UP ? android.view.SoundEffectConstants.NAVIGATION_UP
+                : k == KeyEvent.KEYCODE_DPAD_DOWN ? android.view.SoundEffectConstants.NAVIGATION_DOWN
+                : k == KeyEvent.KEYCODE_DPAD_LEFT ? android.view.SoundEffectConstants.NAVIGATION_LEFT
+                : android.view.SoundEffectConstants.NAVIGATION_RIGHT);
+    }
+
     private void select() {
+        root.playSoundEffect(android.view.SoundEffectConstants.CLICK);
         switch (zone) {
             case Z_MENU:
                 if (menuIdx < menuActions.size()) {
@@ -2607,6 +2643,7 @@ public class HomeActivity extends Activity {
         if (req == REQ_BLUETOOTH && Bluetooth.allowed(this)) openBluetooth();
         // The Wi-Fi name and Watch Next are read as Talkies starts: start again with them.
         if (req == REQ_SETUP && !permissionsMissing()) recreate();
+        if (req == REQ_PICTURES && checkSelfPermission(picturesPermission()) == PackageManager.PERMISSION_GRANTED) openTvPictures();
     }
 
     // ---------------------------------------------------------------- finish setup
@@ -3023,15 +3060,21 @@ public class HomeActivity extends Activity {
         final View[] bt = new View[1];
         bt[0] = addRow("Bluetooth", null, this::openBluetooth, false);
         bluetoothStatus(st -> { if (bt[0].isAttachedToWindow()) setStatus(bt[0], st); });
-        addRow("Sound output", soundbarConnected() ? "Soundbar" : "TV speakers", () -> {
-            Intent i = new Intent().setClassName("com.android.tv.settings", "com.android.tv.settings.device.sound.SoundActivity");
+        // Android tells apps a soundbar is connected (HDMI ARC/eARC), not whether it's playing: say only what's known.
+        addRow("Sound output", soundbarConnected() ? "Soundbar connected" : "TV speakers", () -> {
+            // Where the speakers are chosen differs by maker: Sony keeps it under Display & sound → Audio output, and
+            // its plain Sound page has only System sounds. Elsewhere the Sound page (sound mode, outputs).
+            Intent i = new Intent();
+            if ("sony".equalsIgnoreCase(Build.MANUFACTURER)) {
+                i.setClassName("com.android.tv.settings", "com.android.tv.settings.device.displaysound.DisplaySoundActivity");
+                if (pm.resolveActivity(i, 0) == null) i = new Intent();
+            }
+            if (i.getComponent() == null) i.setClassName("com.android.tv.settings", "com.android.tv.settings.device.sound.SoundActivity");
             if (pm.resolveActivity(i, 0) == null) i = new Intent(Settings.ACTION_SOUND_SETTINGS);
             start(i);
         }, false);
-        // Started through SystemUI's Somnambulator. Some devices (Google TV Streamer) have none, and no other way for an
-        // app to start the screensaver (their settings have no Start now either): no row there.
-        Intent dream = new Intent(Intent.ACTION_MAIN).setClassName("com.android.systemui", "com.android.systemui.Somnambulator");
-        if (pm.resolveActivity(dream, 0) != null) addRow("Screensaver", null, () -> start(dream), false);
+        Intent dream = screensaverIntent();
+        if (dream != null) addRow("Screensaver", null, () -> start(dream), false);
         // The TV's own power menu, so it still asks before restarting.
         addRow("Restart…", null, () -> { if (!SleepService.powerMenu()) needsTurnOffSetup(); }, false);
         showMenu(350);
@@ -3123,17 +3166,7 @@ public class HomeActivity extends Activity {
         }, true);
         // Switch between Talkies and another launcher with Android's Home app chooser.
         addRow("Home app", currentHomeName(), () -> start(new Intent(Settings.ACTION_HOME_SETTINGS)), false);
-        final View[] wp = new View[1];
-        wp[0] = addRow("Bing wallpaper", wallpaperLabel(), () -> {
-            if (ownWallpaper()) {
-                Toast.makeText(this, "Your own wallpaper.jpg is shown instead; delete it to use Bing's", Toast.LENGTH_LONG).show();
-                return;
-            }
-            boolean on = !prefs.getBoolean("bing_wallpaper", false);
-            prefs.edit().putBoolean("bing_wallpaper", on).apply();
-            if (on) bing.refreshIfStale(this::loadWallpaper); else { bing.clear(); loadWallpaper(); }
-            setStatus(wp[0], wallpaperLabel());
-        }, true);
+        addRow("Wallpaper", wallpaperLabel(), this::openWallpaperMenu, false);
         final View[] anim = new View[1];
         anim[0] = addRow("Apps open from their tile", prefs.getBoolean("open_animation", true) ? "On" : "Off", () -> {
             boolean on = !prefs.getBoolean("open_animation", true);
@@ -3164,8 +3197,230 @@ public class HomeActivity extends Activity {
     }
 
     private String wallpaperLabel() {
-        if (ownWallpaper()) return "Your picture instead";
+        if (ownWallpaper()) return "Your picture";
         return prefs.getBoolean("bing_wallpaper", false) ? "Picture of the day" : "Off";
+    }
+
+    // ---------------------------------------------------------------- wallpaper
+
+    /** Talkies settings → Wallpaper: a picture of your own (from your phone or this TV), Bing's, or none. */
+    private void openWallpaperMenu() {
+        beginMenu(settingsAt, "Wallpaper  ·  now: " + wallpaperLabel());
+        addRow("From your phone", "scan a QR code", this::openPhoneWallpaper, false);
+        addRow("From this TV", "Pictures, Downloads, USB drives", this::openTvPictures, false);
+        final View[] bing = new View[1];
+        bing[0] = addRow("Picture of the day", prefs.getBoolean("bing_wallpaper", false) ? "On" : "Off", () -> {
+            boolean on = !prefs.getBoolean("bing_wallpaper", false);
+            prefs.edit().putBoolean("bing_wallpaper", on).apply();
+            if (on) this.bing.refreshIfStale(this::loadWallpaper); else { this.bing.clear(); loadWallpaper(); }
+            setStatus(bing[0], on ? (ownWallpaper() ? "On · after your picture" : "On") : "Off");
+        }, true);
+        if (ownWallpaper()) addRow("Remove your picture", prefs.getBoolean("bing_wallpaper", false) ? "back to Bing's" : null, () -> {
+            removeOwnWallpaper();
+            loadWallpaper();
+            Toast.makeText(this, "Your picture is removed", Toast.LENGTH_SHORT).show();
+        }, false);
+        showMenu(420);
+    }
+
+    private void removeOwnWallpaper() {
+        File dir = getExternalFilesDir(null);
+        if (dir == null) return;
+        for (String n : new String[]{"wallpaper.jpg", "wallpaper.png", "wallpaper.webp"}) new File(dir, n).delete();
+    }
+
+    /**
+     * Saves a picture as files/wallpaper.jpg: cropped to fill the screen's 16:9 at 1920 × 1080 and re-encoded, so a
+     * 50 MB photo becomes a small file and keeps nothing but the picture. Off the UI thread; false if it isn't a picture.
+     */
+    private boolean saveWallpaper(java.util.function.Supplier<java.io.InputStream> open) {
+        final int w = 1920, h = 1080;
+        try {
+            BitmapFactory.Options o = new BitmapFactory.Options();
+            o.inJustDecodeBounds = true;
+            try (java.io.InputStream in = open.get()) { BitmapFactory.decodeStream(in, null, o); }
+            if (o.outWidth <= 0 || o.outHeight <= 0) return false;
+            o.inSampleSize = 1;
+            while (o.outWidth / (o.inSampleSize * 2) >= w && o.outHeight / (o.inSampleSize * 2) >= h) o.inSampleSize *= 2;
+            o.inJustDecodeBounds = false;
+            Bitmap src;
+            try (java.io.InputStream in = open.get()) { src = BitmapFactory.decodeStream(in, null, o); }
+            if (src == null) return false;
+            Bitmap out = Bitmap.createBitmap(w, h, Bitmap.Config.ARGB_8888);
+            float k = Math.max(w / (float) src.getWidth(), h / (float) src.getHeight());
+            float sw = src.getWidth() * k, sh = src.getHeight() * k;
+            new android.graphics.Canvas(out).drawBitmap(src, null,
+                    new RectF((w - sw) / 2, (h - sh) / 2, (w + sw) / 2, (h + sh) / 2), new android.graphics.Paint(android.graphics.Paint.FILTER_BITMAP_FLAG));
+            src.recycle();
+            File dir = getExternalFilesDir(null);
+            if (dir == null) return false;
+            File tmp = new File(dir, "wallpaper.tmp");
+            try (java.io.FileOutputStream f = new java.io.FileOutputStream(tmp)) {
+                out.compress(Bitmap.CompressFormat.JPEG, 90, f);
+            }
+            out.recycle();
+            removeOwnWallpaper();
+            return tmp.renameTo(new File(dir, "wallpaper.jpg"));
+        } catch (Exception | OutOfMemoryError e) {
+            Log.w(TAG, "Couldn't save the wallpaper: " + e);
+            return false;
+        }
+    }
+
+    /** Wallpaper → From your phone: the phone page's photo picker, behind a QR code. */
+    private void openPhoneWallpaper() {
+        java.net.InetAddress lan = PhonePage.lanAddress(this);
+        if (lan == null) {
+            Toast.makeText(this, "The TV isn't on a home Wi-Fi or Ethernet network, so the phone can't reach it", Toast.LENGTH_LONG).show();
+            return;
+        }
+        TextView status = new TextView(this);
+        android.app.AlertDialog[] dialog = new android.app.AlertDialog[1];
+        PhonePage page;
+        try {
+            page = new PhonePage(lan, true, new PhonePage.Listener() {
+                @Override public void checking() {
+                    runOnUiThread(() -> status.setText("Saving your picture…"));
+                }
+
+                @Override public List<String> accept(Map<String, String> fields) { return new ArrayList<>(); }
+
+                @Override public List<String> acceptWallpaper(byte[] jpeg) {
+                    boolean ok = saveWallpaper(() -> new java.io.ByteArrayInputStream(jpeg));
+                    runOnUiThread(() -> {
+                        if (dialog[0] != null) dialog[0].dismiss();
+                        Toast.makeText(HomeActivity.this, ok ? "Your picture is the wallpaper now" : "Couldn't use that picture", Toast.LENGTH_LONG).show();
+                        if (ok) loadWallpaper();
+                    });
+                    return java.util.Collections.singletonList(ok ? "Done: it's on your TV now." : "The TV couldn't use that picture. Try another one.");
+                }
+
+                @Override public void closed(boolean expired) {
+                    if (expired) runOnUiThread(() -> status.setText("This code has expired. Close it and open From your phone again."));
+                }
+            });
+        } catch (java.io.IOException e) {
+            Toast.makeText(this, "Couldn't open the page for your phone", Toast.LENGTH_SHORT).show();
+            return;
+        }
+        LinearLayout box = new LinearLayout(this);
+        box.setOrientation(LinearLayout.VERTICAL);
+        box.setGravity(Gravity.CENTER_HORIZONTAL);
+        box.setPadding(px(24), px(8), px(24), 0);
+        box.addView(qrCode(page.url), new LinearLayout.LayoutParams(px(180), px(180)));
+        TextView where = new TextView(this);
+        where.setText(page.url);
+        where.setTextSize(12);
+        where.setPadding(0, px(8), 0, 0);
+        box.addView(where);
+        status.setText("Waiting for your phone… The page works once, for 5 minutes.");
+        status.setPadding(0, px(6), 0, 0);
+        box.addView(status);
+        dialog[0] = new android.app.AlertDialog.Builder(this, android.R.style.Theme_DeviceDefault_Dialog_Alert)
+                .setTitle("Wallpaper from your phone")
+                .setMessage("Scan this with your phone's camera (on the same Wi-Fi as the TV), then choose a photo.")
+                .setView(box)
+                .setNegativeButton("Close", null)
+                .setOnDismissListener(d -> page.close())
+                .create();
+        dialog[0].show();
+    }
+
+    private static final int REQ_PICTURES = 9;
+    private static final int MAX_PICTURES = 60;
+
+    /** Reading pictures: Android 13 and later ask for photos only, earlier versions for all of storage. */
+    private String picturesPermission() {
+        return Build.VERSION.SDK_INT >= 33 ? "android.permission.READ_MEDIA_IMAGES" : android.Manifest.permission.READ_EXTERNAL_STORAGE;
+    }
+
+    /**
+     * Wallpaper → From this TV: the newest pictures Android knows of, on the TV and any USB drive, each with a small
+     * preview; OK makes one the wallpaper. Asks for the permission first.
+     */
+    private void openTvPictures() {
+        if (checkSelfPermission(picturesPermission()) != PackageManager.PERMISSION_GRANTED) {
+            requestPermissions(new String[]{picturesPermission()}, REQ_PICTURES);
+            return;
+        }
+        background.execute(() -> {
+            List<String[]> found = new ArrayList<>();  // uri, name, folder
+            java.util.Set<String> volumes = Build.VERSION.SDK_INT >= 29
+                    ? android.provider.MediaStore.getExternalVolumeNames(this) : java.util.Collections.singleton("external");
+            List<long[]> order = new ArrayList<>();
+            for (String vol : volumes) {
+                Uri base = android.provider.MediaStore.Images.Media.getContentUri(vol);
+                String[] cols = {android.provider.MediaStore.Images.Media._ID, android.provider.MediaStore.Images.Media.DISPLAY_NAME,
+                        android.provider.MediaStore.Images.Media.BUCKET_DISPLAY_NAME, android.provider.MediaStore.Images.Media.DATE_MODIFIED};
+                try (android.database.Cursor c = getContentResolver().query(base, cols, null, null,
+                        android.provider.MediaStore.Images.Media.DATE_MODIFIED + " DESC")) {
+                    while (c != null && c.moveToNext() && found.size() < MAX_PICTURES * 4) {
+                        found.add(new String[]{android.content.ContentUris.withAppendedId(base, c.getLong(0)).toString(),
+                                c.getString(1), c.getString(2) == null ? "" : c.getString(2)});
+                        order.add(new long[]{c.getLong(3), found.size() - 1});
+                    }
+                } catch (RuntimeException e) {
+                    Log.w(TAG, "Couldn't list pictures on " + vol + ": " + e);
+                }
+            }
+            order.sort((a, b) -> Long.compare(b[0], a[0]));  // newest first across the TV and USB drives
+            List<String[]> pics = new ArrayList<>();
+            for (long[] o : order) if (pics.size() < MAX_PICTURES) pics.add(found.get((int) o[1]));
+            runOnUiThread(() -> showTvPictures(pics));
+        });
+    }
+
+    private void showTvPictures(List<String[]> pics) {
+        beginMenu(settingsAt, pics.isEmpty() ? "No pictures on this TV" : "Wallpaper  ·  OK on a picture to use it");
+        if (pics.isEmpty()) {
+            addRow("Copy pictures to Pictures or Downloads, or plug in a USB drive", null, () -> { }, true);
+            showMenu(460);
+            return;
+        }
+        for (String[] pic : pics) {
+            Uri uri = Uri.parse(pic[0]);
+            LinearLayout row = (LinearLayout) addRow(pic[1], pic[2], () -> {
+                Toast.makeText(this, "Setting the wallpaper…", Toast.LENGTH_SHORT).show();
+                background.execute(() -> {
+                    boolean ok = saveWallpaper(() -> {
+                        try { return getContentResolver().openInputStream(uri); }
+                        catch (java.io.FileNotFoundException e) { throw new RuntimeException(e); }
+                    });
+                    runOnUiThread(() -> {
+                        Toast.makeText(this, ok ? "Your picture is the wallpaper now" : "Couldn't use that picture", Toast.LENGTH_SHORT).show();
+                        if (ok) loadWallpaper();
+                    });
+                });
+            }, false);
+            ImageView thumb = new ImageView(this);
+            thumb.setScaleType(ImageView.ScaleType.CENTER_CROP);
+            thumb.setBackground(rounded(theme.tileBg, 0, 4));
+            thumb.setClipToOutline(true);
+            LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(px(64), px(36));
+            lp.setMarginEnd(px(12));
+            lp.gravity = Gravity.CENTER_VERTICAL;
+            row.addView(thumb, 0, lp);
+            background.execute(() -> {
+                Bitmap t = thumbnail(uri);
+                if (t != null) runOnUiThread(() -> thumb.setImageBitmap(t));
+            });
+        }
+        showMenu(520);
+    }
+
+    private Bitmap thumbnail(Uri uri) {
+        try {
+            if (Build.VERSION.SDK_INT >= 29) return getContentResolver().loadThumbnail(uri, new android.util.Size(px(128), px(72)), null);
+            BitmapFactory.Options o = new BitmapFactory.Options();
+            o.inJustDecodeBounds = true;
+            try (java.io.InputStream in = getContentResolver().openInputStream(uri)) { BitmapFactory.decodeStream(in, null, o); }
+            o.inSampleSize = 1;
+            while (o.outWidth / (o.inSampleSize * 2) >= px(128)) o.inSampleSize *= 2;
+            o.inJustDecodeBounds = false;
+            try (java.io.InputStream in = getContentResolver().openInputStream(uri)) { return BitmapFactory.decodeStream(in, null, o); }
+        } catch (Exception | OutOfMemoryError e) {
+            return null;
+        }
     }
 
     /** After a restart only (the default), or every time the TV wakes from standby too. */

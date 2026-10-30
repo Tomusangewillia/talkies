@@ -35,7 +35,8 @@
 - **Inputs** that know your devices: "PlayStation 5 · On", "Fire TV · Standby".
 - **Remote buttons with a new job:** make any spare button open an app, and give it a second job when held.
 - **Your apps' channel rows** below the dock (Netflix, YouTube, JioHotstar…), the ones you pick, in your order.
-- **Light by day, dark at night**, following your sunrise and sunset, or Bing's picture of the day as the wallpaper.
+- **Light by day, dark at night**, following your sunrise and sunset. **Your own wallpaper**, sent from your phone or
+  picked from the TV or a USB drive, or Bing's picture of the day.
 - **Updates itself:** a bell tells you when a new version is out, and OK installs it.
 
 **Set for where you live, and yours to change.** Talkies works out your country from the TV's time zone (many TVs
@@ -59,7 +60,7 @@ stay on "English (United States)" wherever they are), and almost everything on t
 | ![Hold OK on Prime Video in the dock: Remove from dock, Move, Hide and App info](docs/hold-menu.jpg) | ![The Cricket and Football rows below the dock: a live Australia v South Africa Test, Bangladesh v West Indies and a Ranji Trophy match, and a live Indian Super League match, Goa 0 SC Delhi 1 in stoppage time](docs/scores.jpg) |
 | *Hold OK on an app to remove, move or hide it* | *Live cricket and football below the dock* |
 | ![Bing's picture of the day, a castle above the clouds at dawn, behind the weather, clock, picks and dock](docs/bing.jpg) | ![The Inputs menu in the light look, over the Bing wallpaper](docs/inputs-light.jpg) |
-| *Bing wallpaper (Talkies settings → Bing wallpaper)* | *Inputs in the light look* |
+| *Bing wallpaper (Talkies settings → Wallpaper → Picture of the day)* | *Inputs in the light look* |
 | ![The light look by day: Breaking Bad focused in Trending, a soft pink glow from Netflix](docs/home-light.jpg) | ![For You hidden, dark: a larger weather, clock and date over a blue glow from Prime Video, and the dock](docs/minimal-dark.jpg) |
 | *Light by day (Appearance: Auto follows sunrise and sunset)* | *For You hidden: a larger clock* |
 
@@ -175,8 +176,9 @@ settings to another TV.
   NOAA's aviationweather.gov for the weather, CricketData for cricket (with your key), ESPN's public scoreboard for
   football, Bing for the wallpaper (if you turn it on), GitHub once a day for updates, and Cloudflare when you run a
   speed test. Sharp YouTube pictures (off by default) looks a video's title up on YouTube.
-- **Your keys and location** stay on the TV. *Send from your phone* runs a one-time page on your home network for 5
-  minutes, and the keys go straight to the TV.
+- **Your keys, location and wallpaper** stay on the TV. *Send from your phone* (keys, and Wallpaper → From your
+  phone) runs a one-time page on your home network for 5 minutes, and what you send goes straight to the TV. A photo
+  is cropped on your phone first and arrives without its location or other details.
 - **Continue watching** is built on the TV from Android TV's Watch Next list and what apps report while playing, and
   stays there.
 
@@ -196,7 +198,7 @@ Control Center and remote-button remapping. They work together: run CleanYourTV 
 | **Google Play Protect blocks the install** | Choose *More details* → *Install anyway*. Talkies isn't on the Play Store, so Protect doesn't know it. |
 | **"App not installed."** | Usually a Talkies you built yourself is already on the TV, signed with another key: see *Coming from a version you built yourself* under [Updates](#updates). Otherwise, free some storage and try again. |
 | **Inputs shows only Live TV** | Your device has no HDMI inputs of its own (a streamer like the Google TV Streamer or Shield). On a TV, its HDMI ports are listed. |
-| **No Screensaver** in Control Center | Some devices (Google TV Streamer) don't let apps start the screensaver, so Talkies leaves the button out. It still starts by itself after the idle time set in the TV's settings. |
+| **No Screensaver** in Control Center | Your device gives apps no way to start the screensaver, so Talkies leaves the button out. It still starts by itself after the idle time set in the TV's settings. |
 | **"Google Assistant is having a problem"** | The Google TV launcher was disabled. From a computer: `adb shell pm enable com.google.android.apps.tv.launcherx` |
 | **Home opens a setup screen** | The Talkies Accessibility switch is off, so Google TV's setup wizard answered Home: turn it on ([First-time setup](#first-time-setup), step 1). |
 | **Home doesn't switch the TV to your box** (Google TV Streamer, Shield…) | Update to 1.1.3: Talkies now lets Home through on a box, so Android can switch the input. You may see Google TV's home flash before Talkies; to avoid it, make Talkies the default Home app once, from a computer: `adb shell cmd package set-home-activity --user 0 com.techpp.glass/.HomeActivity` |
@@ -254,6 +256,7 @@ Ideas (no code; Talkies' own implementation):
   the Finish setup checklist: [Plume](https://github.com/aradhyas8/Plume_Launcher). Remote keys also follow CleanYourTV's.
 - Bing wallpaper, channel cards in last-watched order and apps opening from their tile: Plume. Spotting a stopped
   accessibility service: [Matinee](https://github.com/Jarvis322/matinee).
+- Starting the screensaver the way Google Assistant does: [tvOS Launcher](https://github.com/techgenius1/tvOS-Launcher).
 - Bluetooth connect, Restart…, Talkies at power-on, Empty inputs and the settings fallback for TVs that hide the
   standard settings screen: [CleanYourTV](https://github.com/Gathin23/cleanyourtv)'s launcher and add-ons.
 - Now playing and the weather forecast: [Luma](https://github.com/0xProbabillity/luma-tv).
