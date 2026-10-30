@@ -3280,7 +3280,18 @@ public class HomeActivity extends Activity {
         // Switch between Talkies and another launcher with Android's Home app chooser.
         // Google TV keeps its own launcher as the home app whatever is picked, so there Talkies has Home through its
         // Accessibility switch: that's what to turn off to use another home screen.
-        if (isGoogleTvLauncher()) addRow("Home app", SleepService.isRunning() ? "Talkies" : currentHomeName(), () -> {
+        ResolveInfo other = otherHome();
+        if (other != null) {
+            // Another launcher you installed has Home (CleanYourTV's, say), and Talkies steps aside for it. Removing
+            // it is the way back; its App info page has Uninstall and Disable.
+            String name = String.valueOf(other.loadLabel(pm));
+            addRow("Home app", name, () -> {
+                Toast.makeText(this, "Uninstall or disable " + name + " here, then press Home: Talkies takes over",
+                        Toast.LENGTH_LONG).show();
+                start(new Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS, Uri.parse("package:" + other.activityInfo.packageName)));
+            }, false);
+        }
+        else if (isGoogleTvLauncher()) addRow("Home app", SleepService.isRunning() ? "Talkies" : currentHomeName(), () -> {
             Toast.makeText(this, "To use another home screen, turn off Talkies here. Turn it back on to come back to Talkies",
                     Toast.LENGTH_LONG).show();
             Intent i = new Intent().setClassName("com.android.tv.settings", "com.android.tv.settings.oemlink.AccessibilitySettingsActivity");
@@ -3927,6 +3938,16 @@ public class HomeActivity extends Activity {
         } catch (PackageManager.NameNotFoundException e) {
             return false;
         }
+    }
+
+    /** The launcher that has Home when it's one you installed (not Talkies, not the TV's own), else null. */
+    private ResolveInfo otherHome() {
+        ResolveInfo ri = pm.resolveActivity(new Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_HOME),
+                PackageManager.MATCH_DEFAULT_ONLY);
+        if (ri == null || ri.activityInfo == null) return null;
+        String p = ri.activityInfo.packageName;
+        boolean system = (ri.activityInfo.applicationInfo.flags & ApplicationInfo.FLAG_SYSTEM) != 0;
+        return p.equals(getPackageName()) || p.equals("android") || system ? null : ri;
     }
 
     private String currentHomeName() {

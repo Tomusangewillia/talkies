@@ -16,6 +16,9 @@ features, a new fix number only fixes. The version shows in Talkies settings →
   YouTube, with where it streams under the card. Before, the row stayed empty.
 
 ### Fixed
+- **Home app names the launcher that has Home.** When another launcher you installed owns Home (CleanYourTV's, for
+  one), Talkies steps aside for it, and the Home app row tried a settings screen Google TV doesn't have. It now names
+  that launcher, and OK opens its App info page to uninstall or disable it.
 - **The empty picks row says why.** With a TMDB key but no streaming app Talkies knows (and no YouTube), it said
   picks would appear once online; it now says none of your apps is one it knows.
 - **Back goes up one level in menus.** In a menu opened from another (Control Center → Talkies settings → Dock
