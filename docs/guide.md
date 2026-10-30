@@ -30,9 +30,9 @@ everything they do can also be done on the TV, in Talkies settings.
 | Icon buttons | — | Tabs (or the dock when there are no picks) | Next button; stops at the ends | Open | Dock |
 | Tabs | Icon buttons | Picks | Switch tab; stops at the ends | Picks | Dock |
 | Picks | Tabs | Dock | Next pick (it grows, the row slides); stops at the ends | Open it | Dock |
-| Dock | Picks (or the icon buttons) | First channel (or All apps) | Next app; past the last, the round **All apps** button | Launch (hold: dock, Move, Hide, Uninstall, App info); on the All apps button, jump to All apps | — |
+| Dock | Picks (or the icon buttons) | First channel (or All apps) | Next app; past the last, the round **All apps** button | Launch (hold: dock, Move, Change image, Hide, Uninstall, App info); on the All apps button, jump to All apps | — |
 | Channels | Row above (the dock from the first) | Row below (All apps after the last) | Next card; the row slides | Open that title | Dock |
-| All apps | One row up (the last channel from the top row) | One row down | Next app in the row | Launch (hold: dock, Move, Hide, Uninstall, App info) | Dock |
+| All apps | One row up (the last channel from the top row) | One row down | Next app in the row | Launch (hold: dock, Move, Change image, Hide, Uninstall, App info) | Dock |
 | Inputs / Control Center / settings | Previous (from the first, the last) | Next (from the last, the first) | Close | Choose | Close |
 
 **Home** always brings you back to the dock, at the top, on the Trending tab.
@@ -76,6 +76,7 @@ Control Center → **Talkies settings**, or **hold OK on the ⚙ icon** (a press
 | For You | Shown or Hidden. Hidden removes the tabs and picks (the weather, time and date stay, larger), Up from the dock goes to the icons, and TMDB picks aren't fetched |
 | Dock apps | Every app, the dock's first (numbered): OK puts one in the dock or takes it out, the same as **Add to dock** and **Remove from dock** when you hold OK on an app. To change the order, hold OK on an app in the dock and choose **Move** |
 | Dock size | 5, 6, 7 (default), 8, 9 or 10 apps. The tiles grow or shrink so the dock always fills the screen's width; apps that no longer fit move to the front of All apps, and come back when it grows again |
+| All apps order | **Your order** (default: apps you moved with hold OK → Move stay put, the rest A to Z), **Recently opened** (the apps you last opened through Talkies first, the rest A to Z) or **A to Z**. In the two sorted orders only the dock's apps can be moved; the dock always keeps your order |
 | RAM and storage | Shown (default) or Hidden: the two meters beside the icon buttons, with free RAM and free storage, updated every minute |
 | Live scores | Cricket and football (default), Cricket, Football or Off: what the score line and the score rows show |
 | Football leagues | The leagues the Football row follows; see [Football](#football) |
@@ -117,7 +118,11 @@ The picks row sits above the dock. Two of its tabs come from TMDB, for the TV's 
 
 Both only include titles that stream (included in your subscription, not rent or buy) in your country on an app
 installed on this TV: Netflix, Prime Video, Disney+ / JioHotstar, Apple TV, Max, Hulu, Peacock, Paramount+, ZEE5,
-SonyLIV, MX Player, Xstream Play, FanCode, Crunchyroll or MUBI.
+SonyLIV, MX Player, Xstream Play, FanCode, Crunchyroll or MUBI, or any other installed app named like a streaming
+service TMDB lists for your country (Viaplay, Canal+, RTL+, Joyn, Stan, Crave…).
+
+**No streaming apps?** With none of them installed, the tabs show the same kind of titles anyway, and OK plays the
+title's trailer in YouTube. The line under the card says where it streams ("Trailer · on Netflix").
 
 **Which country:** the TV's time zone (where it actually is; many TVs stay on "English (United States)" wherever
 they are), then its language setting. If that's wrong for you, set it: `./set-region.sh GB` (`--remove` to go back).
@@ -313,6 +318,9 @@ the score and the minute ("LIVE · Premier League · 67'"), kick-off time ("star
   - **Add to dock** (from All apps): it takes the dock's last spot, and the app that was there moves to the front of
     All apps. **Remove from dock** does the opposite: the first app in All apps takes its spot.
   - **Move** (below), to place it exactly.
+  - **Change image**: a picture of your own for its tile, **From your phone** (scan a QR code and pick a photo; it's
+    cropped to the tile on the phone) or **From this TV** (Pictures, Downloads, USB drives). **Original image** puts
+    the app's own back.
   - **Hide**: it leaves the dock and All apps but stays installed (voice search and Settings still open it).
     Talkies settings → **Hidden apps** lists them; OK shows one again, at the end of All apps.
   - **Uninstall** opens Android's own "Uninstall this app?" dialog, and only shows for apps you installed (not system

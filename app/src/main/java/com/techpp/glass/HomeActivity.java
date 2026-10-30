@@ -160,6 +160,12 @@ public class HomeActivity extends Activity {
     private int menuIdx, menuAnchor = P_INPUTS;
     private View menuTile;          // a menu opened on an app or card sits by it (else under its top-bar icon)
     private Runnable menuClosed;    // and closing it puts focus back there
+    // Back in a menu opened from another menu's row (Control Center → Talkies settings → Dock apps) goes up one
+    // level: what reopens each menu above, with the row you came from.
+    private Runnable menuOpener;
+    private final java.util.ArrayDeque<Object[]> menuParents = new java.util.ArrayDeque<>();
+    private boolean fromMenuRow;
+    private int menuGen;
     private final List<View> menuItems = new ArrayList<>();
     private final List<Runnable> menuActions = new ArrayList<>();
     private final List<Boolean> menuKeepsOpen = new ArrayList<>();
@@ -285,6 +291,7 @@ public class HomeActivity extends Activity {
         // Banners are prepared at the size of the largest focused tile: an All apps tile at 110%, or the dock's
         // largest (five apps) at 114%.
         AppEntry.setBannerSize(px(Math.max(GRID_TILE_W * 1.10f, DOCK_MAX_W * 1.14f)), px(Math.max(GRID_TILE_H * 1.10f, DOCK_MAX_W * 9 / 16f * 1.14f)));
+        AppEntry.customDir = new File(getExternalFilesDir(null), "tiles");
         trending = new Trending(this);
         weather = new Weather(this);
         bing = new Bing(this, background);
@@ -566,6 +573,11 @@ public class HomeActivity extends Activity {
 
     /** Appearance from Control Center: Auto (by sunrise and sunset), Light or Dark. */
     private static final String[] APPEARANCE = {"Auto", "Light", "Dark"};
+    /** How All apps is arranged (Talkies settings → All apps order). The dock always keeps your order. */
+    private static final String[] APPS_ORDER = {"Your order", "Recently opened", "A to Z"};
+    private static final int ORDER_YOURS = 0, ORDER_RECENT = 1, ORDER_AZ = 2;
+    /** RecentApps as of the last loadApps, so coming home re-sorts only when something new was opened. */
+    private String recentSig = "";
 
     private boolean isDayNow() {
         int mode = prefs.getInt("appearance", 0);
@@ -617,11 +629,30 @@ public class HomeActivity extends Activity {
             return ia != ib ? Integer.compare(ia, ib) : a.label.compareToIgnoreCase(b.label);
         });
         while (docked.size() < dockSize && !all.isEmpty()) docked.add(all.remove(0));
+        int order = appsOrder();
+        List<String> recent = RecentApps.all(this);
+        recentSig = String.join(",", recent);
+        if (order == ORDER_RECENT) {
+            // Apps you opened through Talkies, newest first; the ones you haven't opened yet follow, A–Z.
+            Collections.sort(all, (a, b) -> {
+                int ia = recent.indexOf(a.pkg), ib = recent.indexOf(b.pkg);
+                if (ia < 0) ia = Integer.MAX_VALUE;
+                if (ib < 0) ib = Integer.MAX_VALUE;
+                return ia != ib ? Integer.compare(ia, ib) : a.label.compareToIgnoreCase(b.label);
+            });
+        } else if (order == ORDER_AZ) {
+            Collections.sort(all, (a, b) -> a.label.compareToIgnoreCase(b.label));
+        }
         apps.clear();
         apps.addAll(docked);
         apps.addAll(all);
         dockCount = docked.size();
         Log.i(TAG, "apps=" + apps.size() + " dock=" + dockCount);
+    }
+
+    private int appsOrder() {
+        int n = prefs.getInt("apps_order", ORDER_YOURS);
+        return n < 0 || n >= APPS_ORDER.length ? ORDER_YOURS : n;
     }
 
     private int dockSize() {
@@ -1160,6 +1191,8 @@ public class HomeActivity extends Activity {
         if (!show) return;
         picksHint.setText(Keys.read(this, Keys.TMDB) == null
                 ? "Trending and new picks need a free TMDB key: Control Center → Talkies settings → Keys and location"
+                : trending.matchedApps() == 0
+                ? "Trending shows what's on your streaming apps, and none Talkies knows is installed. With YouTube installed, it shows trailers instead."
                 : "Picks appear here once Talkies is online. Shows you watch show up under Continue.");
     }
 
@@ -1724,12 +1757,22 @@ public class HomeActivity extends Activity {
             case Z_MENU:
                 if (menuIdx < menuActions.size()) {
                     Runnable a = menuActions.get(menuIdx);
-                    if (!menuKeepsOpen.get(menuIdx)) closeMenu();
-                    a.run();
+                    boolean keep = menuKeepsOpen.get(menuIdx);
+                    Object[] parent = {menuOpener, menuIdx};
+                    if (!keep) closeMenu();
+                    int before = menuGen;
+                    fromMenuRow = true;
+                    try { a.run(); } finally { fromMenuRow = false; }
+                    // A row that opened another menu: Back comes here. (A row that kept its menu open and rebuilt
+                    // it is the same level.)
+                    if (!keep && menuGen != before && zone == Z_MENU && parent[0] != null) {
+                        menuParents.push(parent);
+                        menuOpener = a;
+                    }
                 }
                 break;
             case Z_TOP:
-                if (iconIdx == P_CONTROL) openControlCenter();
+                if (iconIdx == P_CONTROL) { openControlCenter(); menuOpener = this::openControlCenter; }
                 else if (iconIdx == P_INPUTS) openInputs();
                 else if (iconIdx == P_WIFI) start(new Intent(Settings.ACTION_WIFI_SETTINGS));
                 else if (iconIdx == P_BELL) openUpdates();
@@ -1782,7 +1825,15 @@ public class HomeActivity extends Activity {
     }
 
     private void back() {
-        if (zone == Z_MENU) closeMenu();
+        if (zone == Z_MENU && !menuParents.isEmpty()) {
+            Object[] parent = menuParents.pop();
+            Runnable opener = (Runnable) parent[0];
+            closeMenu();
+            fromMenuRow = true;
+            try { opener.run(); } finally { fromMenuRow = false; }
+            menuOpener = opener;
+            if (zone == Z_MENU) focusMenu(Math.min((Integer) parent[1], menuItems.size() - 1));
+        } else if (zone == Z_MENU) closeMenu();
         else if (zone != Z_DOCK) focusDock(dockIdx);
     }
 
@@ -1919,12 +1970,24 @@ public class HomeActivity extends Activity {
             if (b.length() > 0) b.append(',');
             b.append(apps.get(i).pkg);
         }
+        if (appsOrder() != ORDER_YOURS) {
+            // All apps is sorted for you: only the dock's arrangement is yours to keep.
+            prefs.edit().putString("order_dock", d.toString()).apply();
+            loadApps();
+            buildAppViews();
+            return;
+        }
         prefs.edit().putString("order_dock", d.toString()).putString("order_apps", rest.toString()).apply();
     }
 
     // ---------------------------------------------------------------- menus (Inputs, Control Center)
 
     private void beginMenu(int anchor, String heading) {
+        menuGen++;
+        if (!fromMenuRow) {  // a menu of its own, not one level down
+            menuParents.clear();
+            menuOpener = null;
+        }
         menuAnchor = anchor;
         menuTile = null;
         menuClosed = null;
@@ -2794,7 +2857,10 @@ public class HomeActivity extends Activity {
         if (zone == Z_MENU) { startMove(); return; }  // the Channels editor: pick the row up
         holdFired = true;
         if (zone == Z_DOCK || zone == Z_GRID) openAppMenu();
-        else if (zone == Z_TOP && iconIdx == P_SETTINGS) openTalkiesSettings(P_SETTINGS);
+        else if (zone == Z_TOP && iconIdx == P_SETTINGS) {
+            openTalkiesSettings(P_SETTINGS);
+            menuOpener = () -> openTalkiesSettings(P_SETTINGS);
+        }
         else if (continueCard() != null) openContinueMenu();
     }
 
@@ -2811,7 +2877,10 @@ public class HomeActivity extends Activity {
         boolean inDock = ai < dockCount, anyOutside = apps.size() > dockCount;
         if (!inDock) addRow("Add to dock", null, () -> addToDock(a.pkg), false);
         else if (anyOutside) addRow("Remove from dock", null, () -> removeFromDock(a.pkg), false);
-        addRow("Move", null, this::startMove, false);
+        // A sorted All apps would put a moved app straight back, so there only the dock's apps move.
+        if (inDock || appsOrder() == ORDER_YOURS) addRow("Move", null, this::startMove, false);
+        File own = AppEntry.customImage(a.pkg);
+        addRow("Change image", own != null && own.isFile() ? "your picture" : null, () -> openTileImage(a.pkg), false);
         addRow("Hide", null, () -> hideApp(a.pkg), false);
         if (canUninstall(a.pkg)) {
             addRow("Uninstall", null, () -> start(new Intent(Intent.ACTION_DELETE, Uri.parse("package:" + a.pkg))), false);
@@ -3160,6 +3229,13 @@ public class HomeActivity extends Activity {
             setStatus(ds[0], n + " apps");
             reloadApps();
         }, true);
+        final View[] ao = new View[1];
+        ao[0] = addRow("All apps order", APPS_ORDER[appsOrder()], () -> {
+            int n = (appsOrder() + 1) % APPS_ORDER.length;
+            prefs.edit().putInt("apps_order", n).apply();
+            setStatus(ao[0], APPS_ORDER[n]);
+            reloadApps();
+        }, true);
         final View[] ms = new View[1];
         ms[0] = addRow("RAM and storage", meters.getVisibility() == View.VISIBLE ? "Shown" : "Hidden", () -> {
             boolean show = meters.getVisibility() != View.VISIBLE;
@@ -3253,8 +3329,8 @@ public class HomeActivity extends Activity {
     /** Talkies settings → Wallpaper: a picture of your own (from your phone or this TV), Bing's, or none. */
     private void openWallpaperMenu() {
         beginMenu(settingsAt, "Wallpaper  ·  now: " + wallpaperLabel());
-        addRow("From your phone", "scan a QR code", this::openPhoneWallpaper, false);
-        addRow("From this TV", "Pictures, Downloads, USB drives", this::openTvPictures, false);
+        addRow("From your phone", "scan a QR code", () -> { pictureFor = null; openPhoneWallpaper(); }, false);
+        addRow("From this TV", "Pictures, Downloads, USB drives", () -> { pictureFor = null; openTvPictures(); }, false);
         final View[] bing = new View[1];
         bing[0] = addRow("Picture of the day", prefs.getBoolean("bing_wallpaper", false) ? "On" : "Off", () -> {
             boolean on = !prefs.getBoolean("bing_wallpaper", false);
@@ -3270,6 +3346,61 @@ public class HomeActivity extends Activity {
         showMenu(420);
     }
 
+    // ---------------------------------------------------------------- your own app images
+
+    /** The app whose image the picture pickers set (hold OK → Change image), or null for the wallpaper. */
+    private String pictureFor;
+
+    /** The app's tile on screen, for a menu about it; null if it isn't showing. */
+    private View tileOf(String pkg) {
+        int i = indexOf(pkg);
+        if (i < 0) return null;
+        if (i < dockCount) return i < dockTiles.size() ? dockTiles.get(i) : null;
+        return i - dockCount < gridTiles.size() ? gridTiles.get(i - dockCount) : null;
+    }
+
+    private String labelOf(String pkg) {
+        AppEntry a = appFor(pkg);
+        return a != null ? a.label : pkg;
+    }
+
+    /** Puts a menu about an app by its tile; closing it puts focus back on the app. */
+    private void anchorToApp(String pkg) {
+        menuTile = tileOf(pkg);
+        menuClosed = () -> {
+            int i = indexOf(pkg);
+            if (i >= 0 && i < dockCount) focusDock(i);
+            else if (i >= dockCount) focusGrid(i - dockCount);
+            else focusDock(dockIdx);
+        };
+    }
+
+    /** Hold OK on an app → Change image: a picture of your own for its tile, from your phone or this TV. */
+    private void openTileImage(String pkg) {
+        beginMenu(P_CONTROL, labelOf(pkg) + "  ·  image");
+        anchorToApp(pkg);
+        addRow("From your phone", "scan a QR code", () -> { pictureFor = pkg; openPhoneWallpaper(); }, false);
+        addRow("From this TV", "Pictures, Downloads, USB drives", () -> { pictureFor = pkg; openTvPictures(); }, false);
+        File own = AppEntry.customImage(pkg);
+        if (own != null && own.isFile()) addRow("Original image", null, () -> {
+            own.delete();
+            reloadApps();
+            Toast.makeText(this, labelOf(pkg) + " has its own image again", Toast.LENGTH_SHORT).show();
+        }, false);
+        showMenu(380);
+    }
+
+    /** After a picture was saved for {@code pkg} (null: the wallpaper): show it, and say so. */
+    private void pictureSaved(String pkg, boolean ok) {
+        if (pkg == null) {
+            Toast.makeText(this, ok ? "Your picture is the wallpaper now" : "Couldn't use that picture", Toast.LENGTH_SHORT).show();
+            if (ok) loadWallpaper();
+            return;
+        }
+        Toast.makeText(this, ok ? "Your picture is on " + labelOf(pkg) + " now" : "Couldn't use that picture", Toast.LENGTH_SHORT).show();
+        if (ok) reloadApps();
+    }
+
     private void removeOwnWallpaper() {
         File dir = getExternalFilesDir(null);
         if (dir == null) return;
@@ -3280,8 +3411,11 @@ public class HomeActivity extends Activity {
      * Saves a picture as files/wallpaper.jpg: cropped to fill the screen's 16:9 at 1920 × 1080 and re-encoded, so a
      * 50 MB photo becomes a small file and keeps nothing but the picture. Off the UI thread; false if it isn't a picture.
      */
-    private boolean saveWallpaper(java.util.function.Supplier<java.io.InputStream> open) {
-        final int w = 1920, h = 1080;
+    private boolean saveWallpaper(java.util.function.Supplier<java.io.InputStream> open) { return savePicture(open, null); }
+
+    /** The same for an app's tile (files/tiles/<package>.jpg, 640 × 360) when {@code pkg} isn't null. */
+    private boolean savePicture(java.util.function.Supplier<java.io.InputStream> open, String pkg) {
+        final int w = pkg == null ? 1920 : 640, h = pkg == null ? 1080 : 360;
         try {
             BitmapFactory.Options o = new BitmapFactory.Options();
             o.inJustDecodeBounds = true;
@@ -3299,13 +3433,14 @@ public class HomeActivity extends Activity {
             new android.graphics.Canvas(out).drawBitmap(src, null,
                     new RectF((w - sw) / 2, (h - sh) / 2, (w + sw) / 2, (h + sh) / 2), new android.graphics.Paint(android.graphics.Paint.FILTER_BITMAP_FLAG));
             src.recycle();
-            File dir = getExternalFilesDir(null);
-            if (dir == null) return false;
-            File tmp = new File(dir, "wallpaper.tmp");
+            File dir = pkg == null ? getExternalFilesDir(null) : AppEntry.customDir;
+            if (dir == null || (!dir.isDirectory() && !dir.mkdirs())) return false;
+            File tmp = new File(dir, pkg == null ? "wallpaper.tmp" : pkg + ".tmp");
             try (java.io.FileOutputStream f = new java.io.FileOutputStream(tmp)) {
                 out.compress(Bitmap.CompressFormat.JPEG, 90, f);
             }
             out.recycle();
+            if (pkg != null) return tmp.renameTo(AppEntry.customImage(pkg));
             removeOwnWallpaper();
             return tmp.renameTo(new File(dir, "wallpaper.jpg"));
         } catch (Exception | OutOfMemoryError e) {
@@ -3321,11 +3456,12 @@ public class HomeActivity extends Activity {
             Toast.makeText(this, "The TV isn't on a home Wi-Fi or Ethernet network, so the phone can't reach it", Toast.LENGTH_LONG).show();
             return;
         }
+        final String target = pictureFor;
         TextView status = new TextView(this);
         android.app.AlertDialog[] dialog = new android.app.AlertDialog[1];
         PhonePage page;
         try {
-            page = new PhonePage(lan, true, new PhonePage.Listener() {
+            page = new PhonePage(lan, true, target == null ? "the TV screen" : labelOf(target) + "'s tile", new PhonePage.Listener() {
                 @Override public void checking() {
                     runOnUiThread(() -> status.setText("Saving your picture…"));
                 }
@@ -3333,11 +3469,10 @@ public class HomeActivity extends Activity {
                 @Override public List<String> accept(Map<String, String> fields) { return new ArrayList<>(); }
 
                 @Override public List<String> acceptWallpaper(byte[] jpeg) {
-                    boolean ok = saveWallpaper(() -> new java.io.ByteArrayInputStream(jpeg));
+                    boolean ok = savePicture(() -> new java.io.ByteArrayInputStream(jpeg), target);
                     runOnUiThread(() -> {
                         if (dialog[0] != null) dialog[0].dismiss();
-                        Toast.makeText(HomeActivity.this, ok ? "Your picture is the wallpaper now" : "Couldn't use that picture", Toast.LENGTH_LONG).show();
-                        if (ok) loadWallpaper();
+                        pictureSaved(target, ok);
                     });
                     return java.util.Collections.singletonList(ok ? "Done: it's on your TV now." : "The TV couldn't use that picture. Try another one.");
                 }
@@ -3364,7 +3499,7 @@ public class HomeActivity extends Activity {
         status.setPadding(0, px(6), 0, 0);
         box.addView(status);
         dialog[0] = new android.app.AlertDialog.Builder(this, android.R.style.Theme_DeviceDefault_Dialog_Alert)
-                .setTitle("Wallpaper from your phone")
+                .setTitle(target == null ? "Wallpaper from your phone" : "A picture for " + labelOf(target))
                 .setMessage("Scan this with your phone's camera (on the same Wi-Fi as the TV), then choose a photo.")
                 .setView(box)
                 .setNegativeButton("Close", null)
@@ -3418,7 +3553,10 @@ public class HomeActivity extends Activity {
     }
 
     private void showTvPictures(List<String[]> pics) {
-        beginMenu(settingsAt, pics.isEmpty() ? "No pictures on this TV" : "Wallpaper  ·  OK on a picture to use it");
+        final String target = pictureFor;
+        beginMenu(settingsAt, pics.isEmpty() ? "No pictures on this TV"
+                : (target == null ? "Wallpaper" : labelOf(target)) + "  ·  OK on a picture to use it");
+        if (target != null) anchorToApp(target);
         if (pics.isEmpty()) {
             addRow("Copy pictures to Pictures or Downloads, or plug in a USB drive", null, () -> { }, true);
             showMenu(460);
@@ -3427,16 +3565,13 @@ public class HomeActivity extends Activity {
         for (String[] pic : pics) {
             Uri uri = Uri.parse(pic[0]);
             LinearLayout row = (LinearLayout) addRow(pic[1], pic[2], () -> {
-                Toast.makeText(this, "Setting the wallpaper…", Toast.LENGTH_SHORT).show();
+                if (target == null) Toast.makeText(this, "Setting the wallpaper…", Toast.LENGTH_SHORT).show();
                 background.execute(() -> {
-                    boolean ok = saveWallpaper(() -> {
+                    boolean ok = savePicture(() -> {
                         try { return getContentResolver().openInputStream(uri); }
                         catch (java.io.FileNotFoundException e) { throw new RuntimeException(e); }
-                    });
-                    runOnUiThread(() -> {
-                        Toast.makeText(this, ok ? "Your picture is the wallpaper now" : "Couldn't use that picture", Toast.LENGTH_SHORT).show();
-                        if (ok) loadWallpaper();
-                    });
+                    }, target);
+                    runOnUiThread(() -> pictureSaved(target, ok));
                 });
             }, false);
             ImageView thumb = new ImageView(this);
@@ -4036,6 +4171,12 @@ public class HomeActivity extends Activity {
         root.removeCallbacks(checkService);
         root.postDelayed(checkService, 6000);
         refreshOnline();   // back on the home screen: catch up on anything that went stale meanwhile
+        if (appsOrder() == ORDER_RECENT && !moving && !recentSig.equals(String.join(",", RecentApps.all(this)))) {
+            String focused = zone == Z_GRID && dockCount + gridIdx < apps.size() ? apps.get(dockCount + gridIdx).pkg : null;
+            reloadApps();
+            int at = focused == null ? -1 : indexOf(focused);
+            if (at >= dockCount) focusGrid(at - dockCount);
+        }
     }
 
     /** Is the accessibility service down when it should be up? Switch it off and on if we may; else say so. */

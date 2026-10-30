@@ -3,6 +3,24 @@
 Versions are numbered *major.minor.fix*. While Talkies is in beta they start with 0: a new minor number brings new
 features, a new fix number only fixes. The version shows in Talkies settings → About.
 
+## Unreleased
+
+### New
+- **All apps order** (Talkies settings): keep your own order, put the apps you opened most recently first, or sort
+  A to Z. Recently opened counts only apps opened through Talkies, so it still watches no other app.
+- **Your own app images.** Hold OK on an app → **Change image**: a picture from your phone (QR code) or from this
+  TV or a USB drive. **Original image** puts the app's own back.
+- **Trending works in more countries.** Besides the 17 services Talkies knew, any installed app named like a
+  streaming service TMDB lists for your country counts (Viaplay, Canal+, RTL+, Joyn, Stan…).
+- **Trending without streaming apps.** With none installed, the tabs still fill, and OK plays the title's trailer in
+  YouTube, with where it streams under the card. Before, the row stayed empty.
+
+### Fixed
+- **The empty picks row says why.** With a TMDB key but no streaming app Talkies knows (and no YouTube), it said
+  picks would appear once online; it now says none of your apps is one it knows.
+- **Back goes up one level in menus.** In a menu opened from another (Control Center → Talkies settings → Dock
+  apps), Back now returns to the menu above, on the row you came from, instead of closing everything.
+
 ## 1.2.1 — 30 October 2026
 
 ### Fixed

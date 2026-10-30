@@ -45,8 +45,8 @@ stay on "English (United States)" wherever they are), and almost everything on t
 | | Set for your country | You can change |
 |---|---|---|
 | **Weather** | °C or °F; day and night follow your sunrise and sunset | The area (a town or `lat,lon`), in Talkies settings → Keys and location |
-| **For You** | Trending and *New in your country* only show titles that stream on a subscription where you are | Show or hide it |
-| **Dock** | — | Which apps (Talkies settings → **Dock apps**, or hold OK on any app), how many (**Dock size**, 5 to 10) and their order (hold OK → **Move**) |
+| **For You** | Trending and *New in your country* only show titles that stream on a subscription where you are, on your apps (no streaming apps: their trailers in YouTube) | Show or hide it |
+| **Dock** | — | Which apps (Talkies settings → **Dock apps**, or hold OK on any app), how many (**Dock size**, 5 to 10) and their order (hold OK → **Move**); All apps in your order, recently opened first, or A to Z (**All apps order**); your own picture on any app (hold OK → **Change image**) |
 | **Cricket** | Your team's matches first, then other internationals and your domestic competitions (IPL, Ranji Trophy… in India) | On or off |
 | **Football** | Your country's leagues by default (Premier League, Champions League and ISL in India; MLS first in the US…) | Pick any leagues |
 | **Channels, keys, look** | — | Which channel rows and their order, what each remote button does (tap and hold), Light, Dark or Auto, wallpaper |
@@ -192,7 +192,7 @@ Control Center and remote-button remapping. They work together: run CleanYourTV 
 |---|---|
 | **Home opens Google TV** (or the TV's own launcher) | The Talkies Accessibility switch is off ([First-time setup](#first-time-setup), step 1). A force stop turns it off; with the optional `pm grant` from the install, Talkies turns it back on by itself. |
 | **Accessibility switch greyed out**, or "Restricted setting" | Android 13 and newer: see the tip under [First-time setup](#first-time-setup). On a Google TV Streamer it needs the one `adb` command there. |
-| **No Trending or New tabs**, only Continue | No TMDB key yet: Talkies settings → **Keys and location** → *Send from your phone*. With a key, picks arrive within a minute of opening Talkies with the TV online. |
+| **No Trending or New tabs**, only Continue | No TMDB key yet: Talkies settings → **Keys and location** → *Send from your phone*. With a key, picks arrive within a minute of opening Talkies with the TV online. No streaming app Talkies recognises and no YouTube: the row says so. |
 | **No weather** | Talkies needs your town for it: Talkies settings → **Keys and location**. |
 | **Continue stays empty** | Notification access or the Watch Next permission is missing: Talkies settings → **Finish setup**. |
 | **Google Play Protect blocks the install** | Choose *More details* → *Install anyway*. Talkies isn't on the Play Store, so Protect doesn't know it. |

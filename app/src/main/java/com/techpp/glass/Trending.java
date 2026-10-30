@@ -33,7 +33,9 @@ import java.util.concurrent.Executors;
 
 /**
  * Two tabs of picks, kept only when TMDB says the title streams (subscription, not rent/buy) in the TV's country
- * (Region) on an app installed on this TV. Idea from Free My TV (MIT).
+ * (Region) on an app installed on this TV. Idea from Free My TV (MIT). The apps are the SERVICES below, plus any
+ * installed app whose name is a streaming service TMDB lists for the country (Viaplay, Canal+, RTL+…).
+ * With none of them installed, the same picks open their trailer in YouTube instead ("elsewhere").
  *   Trending      what's popular now on your apps here: titles from this country and English titles, mixed 2:1
  *                 (TMDB's own trending list is global and almost all English), minus anything in "New in";
  *                 in English-speaking countries simply what's popular here
@@ -54,7 +56,11 @@ final class Trending {
     static final int SHOWN = 4;
     static final String TRENDING = "trending", INDIA = "india";
     /** Bump when picks.json changes shape; the next home screen refreshes right away. */
-    private static final int CACHE_VERSION = 6;
+    private static final int CACHE_VERSION = 9;
+    /** YouTube on Android TV, Fire TV, then the phone app, for the trailers when no streaming app is installed. */
+    private static final String[] YOUTUBE = {"com.google.android.youtube.tv", "com.amazon.firetv.youtube", "com.google.android.youtube"};
+    /** For one refresh: no streaming app matched, so picks are trailers in this YouTube app. */
+    private String elsewhere;
     /** TMDB genre ids → names, fetched once per refresh. */
     private final Map<Integer, String> genres = new java.util.HashMap<>();
 
@@ -87,7 +93,7 @@ final class Trending {
         File poster;         // TMDB poster, for the small portrait cards; null when there is none
         transient String backdropPath, posterPath;  // TMDB image paths, while a refresh downloads them
         long at;            // Recently watched: when it was last watched
-        String intentUri;   // Recently watched (Watch Next): opens the right title or episode
+        String intentUri;   // Recently watched (Watch Next): opens the right title or episode; a trailer pick: the trailer
         String meta = "";   // the line under a big card, e.g. "Film · Action · Telugu · Netflix"
         float progress = -1; // Continue: how far in (0–1), or -1 when unknown
         Object extra;        // Cricket: the Cricket.Match this card shows
@@ -153,6 +159,8 @@ final class Trending {
                 p.tab = o.optString("tab", TRENDING);
                 p.lang = o.optString("lang", "");
                 p.meta = o.optString("meta", "");
+                String uri = o.optString("uri", "");
+                p.intentUri = uri.isEmpty() ? null : uri;
                 if (p.image.isFile() && installed(p.pkg)) out.add(p);
             }
         } catch (Exception e) {
@@ -258,24 +266,33 @@ final class Trending {
             JSONArray g = setup.getJSONArray(kind + "_genres");
             for (int i = 0; i < g.length(); i++) genres.put(g.getJSONObject(i).getInt("id"), g.getJSONObject(i).getString("name"));
         }
-        // 1. Which of TMDB's Indian streaming services are installed here.
+        // 1. Which of the country's streaming services TMDB knows are installed here: ours by package, others by name.
         Map<Integer, String[]> services = new LinkedHashMap<>();
+        Map<String, String[]> apps = installedByName();
         for (String kind : new String[]{"movie", "tv"}) {
             JSONArray a = setup.getJSONArray(kind + "_providers");
             for (int i = 0; i < a.length(); i++) {
                 JSONObject o = a.getJSONObject(i);
                 String[] s = service(o.getString("provider_name"));
-                if (s != null && installed(s[1])) services.put(o.getInt("provider_id"), s);
+                if (s != null && !installed(s[1])) s = null;
+                if (s == null) s = byName(apps, o.getString("provider_name"));
+                if (s != null) services.put(o.getInt("provider_id"), s);
             }
         }
         Log.i(TAG, "Matched " + services.size() + " TMDB services to installed apps");
-        if (services.isEmpty()) { save(new ArrayList<>()); return; }
+        prefs.edit().putInt("matched", services.size()).apply();
+        elsewhere = null;
+        if (services.isEmpty()) {
+            for (String y : YOUTUBE) if (elsewhere == null && installed(y)) elsewhere = y;
+            if (elsewhere == null) { save(new ArrayList<>()); return; }
+            Log.i(TAG, "No streaming apps: trailers in " + elsewhere);
+        }
 
         // 2. Candidates for each tab, then 3. keep those that stream on an installed app (and fetch backdrops).
         StringBuilder ids = new StringBuilder();
         for (int id : services.keySet()) ids.append(ids.length() == 0 ? "" : "|").append(id);
         String common = "&watch_region=" + region + "&with_watch_monetization_types=flatrate&include_adult=false"
-                + "&sort_by=popularity.desc&with_watch_providers=" + ids;
+                + "&sort_by=popularity.desc" + (elsewhere == null ? "&with_watch_providers=" + ids : "");
 
         // The six candidate lists, all at once.
         String popular = "&vote_count.gte=10" + common;
@@ -321,7 +338,7 @@ final class Trending {
             if (exclude.contains(id)) continue;
             n++;
             if (!providerLookups.containsKey(id)) {
-                providerLookups.put(id, later(key, "/" + o.getString("_kind") + "/" + o.getInt("id") + "/watch/providers"));
+                providerLookups.put(id, later(key, lookupPath(o.getString("_kind"), o.getInt("id"), o.optString("original_language", ""))));
             }
         }
     }
@@ -409,17 +426,65 @@ final class Trending {
         java.util.concurrent.Future<JSONObject> lookup = providerLookups.get(kind + o.getInt("id"));
         JSONObject providers;
         try {
-            providers = lookup != null ? lookup.get() : get(key, "/" + kind + "/" + o.getInt("id") + "/watch/providers");
+            providers = lookup != null ? lookup.get() : get(key, lookupPath(kind, o.getInt("id"), o.optString("original_language", "")));
         } catch (java.util.concurrent.ExecutionException e) {
             throw e.getCause() instanceof Exception ? (Exception) e.getCause() : e;
         }
+        JSONObject details = providers;
+        if (elsewhere != null) providers = details.getJSONObject("watch/providers");
         JSONObject in = providers.getJSONObject("results").optJSONObject(region);
         JSONArray flat = in == null ? null : in.optJSONArray("flatrate");
-        if (flat == null) return null;
         String[] s = null;
+        if (elsewhere != null) {
+            // No streaming app here: the trailer in YouTube, saying where the title streams.
+            String trailer = trailer(details, o.optString("original_language", ""));
+            if (trailer == null) return null;
+            String where = flat != null && flat.length() > 0 ? flat.getJSONObject(0).getString("provider_name") : null;
+            s = new String[]{"", elsewhere, where == null ? "Trailer" : "Trailer · on " + shortName(where)};
+            Pick t = new Pick();
+            t.intentUri = new android.content.Intent(android.content.Intent.ACTION_VIEW,
+                    android.net.Uri.parse("https://www.youtube.com/watch?v=" + trailer)).setPackage(elsewhere)
+                    .toUri(android.content.Intent.URI_INTENT_SCHEME);
+            return fill(t, s, tab, kind, o);
+        }
+        if (flat == null) return null;
         for (int i = 0; i < flat.length() && s == null; i++) s = services.get(flat.getJSONObject(i).getInt("provider_id"));
         if (s == null) return null;
-        Pick p = new Pick();
+        return fill(new Pick(), s, tab, kind, o);
+    }
+
+    /** Where it streams; with no streaming app here, also its details and videos (for the trailer) in one request. */
+    private String lookupPath(String kind, int id, String lang) {
+        return "/" + kind + "/" + id + (elsewhere == null ? "/watch/providers"
+                : "?append_to_response=videos,watch/providers&include_video_language=en,null" + (lang.matches("[a-z]{2}") ? "," + lang : ""));
+    }
+
+    /** The title's YouTube trailer (official ones first, in English or its own language), or null. */
+    private static String trailer(JSONObject details, String lang) throws Exception {
+        JSONObject v = details.optJSONObject("videos");
+        JSONArray a = v == null ? null : v.optJSONArray("results");
+        if (a == null) return null;
+        String best = null;
+        int bestScore = -1;
+        for (int i = 0; i < a.length(); i++) {
+            JSONObject x = a.getJSONObject(i);
+            if (!"YouTube".equals(x.optString("site")) || x.optString("key").isEmpty()) continue;
+            String type = x.optString("type");
+            int score = (type.equals("Trailer") ? 4 : type.equals("Teaser") ? 2 : 0) + (x.optBoolean("official") ? 1 : 0);
+            if (type.equals("Trailer") || type.equals("Teaser")) {
+                if (score > bestScore) { best = x.getString("key"); bestScore = score; }
+            }
+        }
+        return best;
+    }
+
+    /** "Amazon Prime Video" → "Prime Video", "Netflix Standard with Ads" → "Netflix": our names where we have one. */
+    private static String shortName(String provider) {
+        String[] s = service(provider);
+        return s != null ? s[2] : provider;
+    }
+
+    private Pick fill(Pick p, String[] s, String tab, String kind, JSONObject o) throws Exception {
         p.id = o.getInt("id");
         p.kind = kind;
         p.tab = tab;
@@ -447,6 +512,47 @@ final class Trending {
         return p;
     }
 
+    /** Installed TV apps by simplified name ("viaplay", "canal+"), as {"", package, name}. */
+    private Map<String, String[]> installedByName() {
+        Map<String, String[]> out = new java.util.HashMap<>();
+        PackageManager pm = ctx.getPackageManager();
+        android.content.Intent q = new android.content.Intent(android.content.Intent.ACTION_MAIN)
+                .addCategory(android.content.Intent.CATEGORY_LEANBACK_LAUNCHER);
+        for (android.content.pm.ResolveInfo ri : pm.queryIntentActivities(q, 0)) {
+            String label = String.valueOf(ri.loadLabel(pm)).trim();
+            String n = simple(label);
+            // YouTube shows the trailers; as a "streaming service" (YouTube Premium) it would only show its originals.
+            if (n.length() >= 3 && !n.startsWith("youtube")) out.put(n, new String[]{"", ri.activityInfo.packageName, label});
+        }
+        return out;
+    }
+
+    /**
+     * The installed app named like this TMDB service: the same name ("Viaplay", "RTL+"), or one is the other plus
+     * more words ("Sky Go" for "Sky Go Italia"), when the shorter is at least four letters.
+     */
+    private static String[] byName(Map<String, String[]> apps, String provider) {
+        String n = simple(provider);
+        if (n.isEmpty()) return null;
+        String[] exact = apps.get(n);
+        if (exact != null) return exact;
+        for (Map.Entry<String, String[]> e : apps.entrySet()) {
+            String a = e.getKey();
+            if ((a.length() >= 4 && n.startsWith(a + " ")) || (n.length() >= 4 && a.startsWith(n + " "))) return e.getValue();
+        }
+        return null;
+    }
+
+    /** Lower case, letters, digits, + and single spaces; "TV" and "Android TV" dropped ("Viaplay TV" → "viaplay"). */
+    private static String simple(String name) {
+        String n = name.toLowerCase(Locale.ROOT).replaceAll("[^\\p{L}\\p{N}+ ]", " ").replaceAll("\\s+", " ").trim();
+        n = n.replaceAll("( android)? tv$", "").trim();
+        return n;
+    }
+
+    /** How many streaming apps the last refresh found (-1: none yet), for the home screen's hint. */
+    int matchedApps() { return prefs.getInt("matched", -1); }
+
     private static String[] service(String providerName) {
         String n = providerName.toLowerCase(Locale.ROOT);
         for (String[] s : SERVICES) if (n.contains(s[0])) return s;
@@ -465,7 +571,7 @@ final class Trending {
         for (Pick p : picks) {
             a.put(new JSONObject().put("id", p.id).put("kind", p.kind).put("tab", p.tab).put("title", p.title)
                     .put("pkg", p.pkg).put("service", p.service).put("lang", p.lang).put("meta", p.meta).put("image", p.image.getName())
-                    .put("poster", p.poster == null ? "" : p.poster.getName()));
+                    .put("poster", p.poster == null ? "" : p.poster.getName()).put("uri", p.intentUri == null ? "" : p.intentUri));
             keep.add(p.image.getName());
             if (p.poster != null) keep.add(p.poster.getName());
         }

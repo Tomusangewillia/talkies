@@ -72,6 +72,14 @@ final class PhonePage {
 
     PhonePage(InetAddress lan, Listener listener) throws IOException { this(lan, false, listener); }
 
+    /** What the photo is cropped for, on the photo page: "the TV screen", or an app's tile. */
+    private String fitFor = "the TV screen";
+
+    PhonePage(InetAddress lan, boolean wallpaper, String fitFor, Listener listener) throws IOException {
+        this(lan, wallpaper, listener);
+        this.fitFor = fitFor;
+    }
+
     PhonePage(InetAddress lan, boolean wallpaper, Listener listener) throws IOException {
         this.listener = listener;
         this.wallpaper = wallpaper;
@@ -308,7 +316,7 @@ final class PhonePage {
      */
     private byte[] photoForm() {
         StringBuilder b = top();
-        b.append("<p>Choose a photo. It's cropped to fit the TV screen here on your phone, then sent to the TV.</p>")
+        b.append("<p>Choose a photo. It's cropped to fit ").append(esc(fitFor)).append(" here on your phone, then sent to the TV.</p>")
                 .append("<input type=file id=f accept=\"image/*\">")
                 .append("<img id=p alt=\"\" style=\"display:none;width:100%;margin-top:16px;border-radius:10px\">")
                 .append("<button id=b disabled>Send to the TV</button>")

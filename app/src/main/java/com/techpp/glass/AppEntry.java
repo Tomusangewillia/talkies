@@ -36,6 +36,10 @@ final class AppEntry {
     }
 
     private static int bannerW = 320, bannerH = 180;
+    /** Pictures you gave apps (hold OK → Change image), as files/tiles/<package>.jpg; set by HomeActivity. */
+    static java.io.File customDir;
+
+    static java.io.File customImage(String pkg) { return customDir == null ? null : new java.io.File(customDir, pkg + ".jpg"); }
 
     /** The pixel size banners are prepared at: the largest a tile is ever drawn. */
     static void setBannerSize(int w, int h) { bannerW = w; bannerH = h; }
@@ -43,7 +47,8 @@ final class AppEntry {
     private void load(PackageManager pm) {
         if (loaded) return;
         loaded = true;
-        banner = sharpBanner(pm);
+        banner = customBanner();
+        if (banner == null) banner = sharpBanner(pm);
         if (banner == null) banner = info.loadBanner(pm);
         if (banner == null) banner = info.applicationInfo.loadBanner(pm);
         if (banner == null) {
@@ -85,6 +90,22 @@ final class AppEntry {
             out.setDensity(android.util.DisplayMetrics.DENSITY_DEFAULT);
             return new android.graphics.drawable.BitmapDrawable(res, out);
         } catch (Exception e) {
+            return null;
+        }
+    }
+
+    /** Your picture for this app, if you chose one. */
+    private Drawable customBanner() {
+        java.io.File f = customImage(pkg);
+        if (f == null || !f.isFile()) return null;
+        try {
+            Bitmap src = android.graphics.BitmapFactory.decodeFile(f.getPath());
+            if (src == null) return null;
+            Bitmap out = fit(src, bannerW, bannerH);
+            out.setHasMipMap(true);
+            out.setDensity(android.util.DisplayMetrics.DENSITY_DEFAULT);
+            return new android.graphics.drawable.BitmapDrawable(null, out);
+        } catch (RuntimeException | OutOfMemoryError e) {
             return null;
         }
     }
