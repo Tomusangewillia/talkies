@@ -3,6 +3,14 @@
 Versions are numbered *major.minor.fix*. While Talkies is in beta they start with 0: a new minor number brings new
 features, a new fix number only fixes. The version shows in Talkies settings → About.
 
+## 1.1.3 — 30 October 2026
+
+### Fixed
+- **Home switches the TV to your streaming box again** ([#13](https://github.com/rajupp/talkies/issues/13)). On a box
+  or stick (Google TV Streamer, Shield…), Android's own Home also turns the TV to that box's input over HDMI-CEC, and
+  Talkies caught the button before Android could. Talkies now lets Home through on a box, and wherever it's the
+  default home app; Google TV's home may flash before Talkies comes back, unless Talkies is the default home app.
+
 ## 1.1.2 — 30 October 2026
 
 ### New

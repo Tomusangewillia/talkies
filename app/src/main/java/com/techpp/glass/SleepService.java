@@ -133,6 +133,11 @@ public class SleepService extends AccessibilityService {
         if (code == KeyEvent.KEYCODE_HOME) {
             // You chose a launcher you installed yourself (Projectivy…) as the home app: Home is its, not ours.
             if (otherLauncherChosen()) return false;
+            // Android's own Home also switches the TV to this device's input over HDMI-CEC (One Touch Play), which an
+            // app can't do: let it through where that matters. With Talkies the default home app, Android opens
+            // Talkies itself; on a streaming box, it opens Google TV's home and the window watcher below brings
+            // Talkies back over it. Only a TV with another default home has Home caught here.
+            if (talkiesIsDefaultHome() || streamingBox()) return false;
             if (up) openHome();
             return true;
         }
@@ -294,6 +299,20 @@ public class SleepService extends AccessibilityService {
      * Whether the default home app is a launcher you installed (not Talkies, not one the TV came with, not Android's
      * "which app?" chooser). Then Talkies stays out of the way of the Home button.
      */
+    private boolean talkiesIsDefaultHome() {
+        android.content.pm.ResolveInfo r = getPackageManager().resolveActivity(
+                new Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_HOME), android.content.pm.PackageManager.MATCH_DEFAULT_ONLY);
+        return r != null && r.activityInfo != null && getPackageName().equals(r.activityInfo.packageName);
+    }
+
+    /** A box or stick plugged into a TV (Google TV Streamer, Shield…) rather than a TV: it has no HDMI inputs of its own. */
+    private boolean streamingBox() {
+        android.media.tv.TvInputManager tim = getSystemService(android.media.tv.TvInputManager.class);
+        if (tim == null) return true;
+        for (android.media.tv.TvInputInfo i : tim.getTvInputList()) if (i.getType() == android.media.tv.TvInputInfo.TYPE_HDMI) return false;
+        return true;
+    }
+
     private boolean otherLauncherChosen() {
         android.content.pm.ResolveInfo r = getPackageManager().resolveActivity(
                 new Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_HOME), android.content.pm.PackageManager.MATCH_DEFAULT_ONLY);
