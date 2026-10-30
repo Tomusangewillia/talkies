@@ -45,7 +45,7 @@ stay on "English (United States)" wherever they are), and almost everything on t
 |---|---|---|
 | **Weather** | °C or °F; day and night follow your sunrise and sunset | The area (a town or `lat,lon`), in Talkies settings → Keys and location |
 | **For You** | Trending and *New in your country* only show titles that stream on a subscription where you are | Show or hide it |
-| **Dock** | — | How many apps (Talkies settings → **Dock size**, 5 to 10), which ones and their order: hold OK on an app to add, remove or move it |
+| **Dock** | — | Which apps (Talkies settings → **Dock apps**, or hold OK on any app), how many (**Dock size**, 5 to 10) and their order (hold OK → **Move**) |
 | **Cricket** | Your team's matches first, then other internationals and your domestic competitions (IPL, Ranji Trophy… in India) | On or off |
 | **Football** | Your country's leagues by default (Premier League, Champions League and ISL in India; MLS first in the US…) | Pick any leagues |
 | **Channels, keys, look** | — | Which channel rows and their order, what each remote button does (tap and hold), Light, Dark or Auto, wallpaper |
@@ -196,7 +196,7 @@ Control Center and remote-button remapping. They work together: run CleanYourTV 
 | **Google Play Protect blocks the install** | Choose *More details* → *Install anyway*. Talkies isn't on the Play Store, so Protect doesn't know it. |
 | **"App not installed."** | Usually a Talkies you built yourself is already on the TV, signed with another key: see *Coming from a version you built yourself* under [Updates](#updates). Otherwise, free some storage and try again. |
 | **Inputs shows only Live TV** | Your device has no HDMI inputs of its own (a streamer like the Google TV Streamer or Shield). On a TV, its HDMI ports are listed. |
-| **Screensaver** opens settings instead | Some devices (Google TV Streamer) don't let apps start the screensaver directly: Talkies opens its settings, where **Start now** does. |
+| **No Screensaver** in Control Center | Some devices (Google TV Streamer) don't let apps start the screensaver, so Talkies leaves the button out. It still starts by itself after the idle time set in the TV's settings. |
 | **"Google Assistant is having a problem"** | The Google TV launcher was disabled. From a computer: `adb shell pm enable com.google.android.apps.tv.launcherx` |
 | **Home opens a setup screen** | The Talkies Accessibility switch is off, so Google TV's setup wizard answered Home: turn it on ([First-time setup](#first-time-setup), step 1). |
 | **Screensaver shows Google's art, not your photos** | Installing with Talkies' build script turned off Google TV's setup wizard, which Ambient mode needs for your Google Photos. From a computer, once: `adb shell pm enable com.google.android.tungsten.setupwraith`. Home stays on Talkies. |

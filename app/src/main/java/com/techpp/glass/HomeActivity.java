@@ -2757,7 +2757,9 @@ public class HomeActivity extends Activity {
     }
 
     /** From All apps into the dock's last spot; the app that was there goes to the front of All apps. */
-    private void addToDock(String pkg) {
+    private void addToDock(String pkg) { addToDock(pkg, true); }
+
+    private void addToDock(String pkg, boolean focus) {
         int ai = indexOf(pkg);
         if (ai < dockCount || dockCount == 0) return;
         AppEntry app = apps.remove(ai), last = apps.remove(dockCount - 1);
@@ -2765,12 +2767,14 @@ public class HomeActivity extends Activity {
         apps.add(dockCount, last);
         saveOrder();
         buildAppViews();
-        root.post(() -> focusDock(dockCount - 1));
+        if (focus) root.post(() -> focusDock(dockCount - 1));
         Toast.makeText(this, app.label + " is in the dock; " + last.label + " moved to All apps", Toast.LENGTH_SHORT).show();
     }
 
     /** Out of the dock to the front of All apps; the first app in All apps takes its spot. */
-    private void removeFromDock(String pkg) {
+    private void removeFromDock(String pkg) { removeFromDock(pkg, true); }
+
+    private void removeFromDock(String pkg, boolean focus) {
         int ai = indexOf(pkg);
         if (ai < 0 || ai >= dockCount || apps.size() <= dockCount) return;
         AppEntry app = apps.remove(ai), next = apps.remove(dockCount - 1);
@@ -2778,7 +2782,7 @@ public class HomeActivity extends Activity {
         apps.add(dockCount, app);
         saveOrder();
         buildAppViews();
-        root.post(() -> focusDock(ai));
+        if (focus) root.post(() -> focusDock(ai));
         Toast.makeText(this, app.label + " moved to All apps; " + next.label + " is in the dock", Toast.LENGTH_SHORT).show();
     }
 
@@ -3024,15 +3028,10 @@ public class HomeActivity extends Activity {
             if (pm.resolveActivity(i, 0) == null) i = new Intent(Settings.ACTION_SOUND_SETTINGS);
             start(i);
         }, false);
-        addRow("Screensaver", null, () -> {
-            Intent dream = new Intent(Intent.ACTION_MAIN).setClassName("com.android.systemui", "com.android.systemui.Somnambulator");
-            // Not on every TV (Google TV Streamer): its screensaver settings instead, which have Start now.
-            if (pm.resolveActivity(dream, 0) == null) {
-                Toast.makeText(this, "Choose Start now to start the screensaver", Toast.LENGTH_LONG).show();
-                dream = new Intent(Settings.ACTION_DREAM_SETTINGS);
-            }
-            start(dream);
-        }, false);
+        // Started through SystemUI's Somnambulator. Some devices (Google TV Streamer) have none, and no other way for an
+        // app to start the screensaver (their settings have no Start now either): no row there.
+        Intent dream = new Intent(Intent.ACTION_MAIN).setClassName("com.android.systemui", "com.android.systemui.Somnambulator");
+        if (pm.resolveActivity(dream, 0) != null) addRow("Screensaver", null, () -> start(dream), false);
         // The TV's own power menu, so it still asks before restarting.
         addRow("Restart…", null, () -> { if (!SleepService.powerMenu()) needsTurnOffSetup(); }, false);
         showMenu(350);
@@ -3072,6 +3071,7 @@ public class HomeActivity extends Activity {
             buildPicksRow(0);
             if (forYou) refreshOnline();
         }, true);
+        addRow("Dock apps", dockCount + " in the dock", this::openDockApps, false);
         final View[] ds = new View[1];
         ds[0] = addRow("Dock size", dockSize() + " apps", () -> {
             int n = dockSize() + 1;
@@ -3207,6 +3207,35 @@ public class HomeActivity extends Activity {
         String caption = bing.caption();
         if (prefs.getBoolean("bing_wallpaper", false) && caption != null) addRow("Wallpaper", "Bing: " + caption, () -> { }, true);
         showMenu(720);
+    }
+
+    // ---------------------------------------------------------------- dock apps
+
+    /**
+     * Talkies settings → Dock apps: every app, the dock's first; OK puts one in the dock or takes it out (the same as
+     * Add to dock and Remove from dock in an app's hold-OK menu). The rows stay where they are while you change them.
+     */
+    private void openDockApps() {
+        beginMenu(settingsAt, "Dock apps  ·  OK: in or out of the dock");
+        final List<String> pkgs = new ArrayList<>();
+        for (AppEntry a : apps) pkgs.add(a.pkg);
+        for (AppEntry a : new ArrayList<>(apps)) {
+            addRow(a.label, null, () -> {
+                int at = menuIdx;
+                if (indexOf(a.pkg) < dockCount) removeFromDock(a.pkg, false); else addToDock(a.pkg, false);
+                dockAppStatuses(pkgs);
+                focusMenu(at);  // the dock was rebuilt: put the ring back on this row
+            }, true);
+        }
+        dockAppStatuses(pkgs);
+        showMenu(440);
+    }
+
+    private void dockAppStatuses(List<String> pkgs) {
+        for (int i = 0; i < pkgs.size() && i < menuItems.size(); i++) {
+            int ai = indexOf(pkgs.get(i));
+            setStatus(menuItems.get(i), ai >= 0 && ai < dockCount ? "In dock · " + (ai + 1) : null);
+        }
     }
 
     // ---------------------------------------------------------------- channels editor

@@ -3,7 +3,11 @@
 Versions are numbered *major.minor.fix*. While Talkies is in beta they start with 0: a new minor number brings new
 features, a new fix number only fixes. The version shows in Talkies settings → About.
 
-## Unreleased
+## 1.1.2 — 30 October 2026
+
+### New
+- **Dock apps**, in Talkies settings: every app in one list, the dock's first. OK puts an app in the dock or takes it
+  out, without hunting for it and holding OK.
 
 ### Fixed
 - **The screensaver shows your Google Photos again** on TVs set up with `build-and-install.sh`. The script turned off
@@ -11,6 +15,9 @@ features, a new fix number only fixes. The version shows in Talkies settings →
   without it, it showed Google's art. Talkies' Accessibility switch already keeps Home on Talkies, so the script now
   leaves the wizard on, and turns it back on where an earlier version turned it off. Installed from the APK? This
   never applied.
+- **No Screensaver button where it can't work** ([#7](https://github.com/rajupp/talkies/issues/7)). On devices that
+  don't let apps start the screensaver (Google TV Streamer), Control Center leaves it out, instead of opening settings
+  that have no Start now.
 
 ## 1.1.1 — 29 October 2026
 

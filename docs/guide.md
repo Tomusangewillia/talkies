@@ -57,7 +57,7 @@ you set once is in **Talkies settings**, at the top.
 | Speed test | A few seconds' download from Cloudflare's speed test; shows e.g. "206 Mbps" |
 | Bluetooth | Shows the connected speaker or headphones. OK lists your paired ones: OK on one connects or disconnects it; **Pair a new device** opens the TV's Bluetooth settings. Bluetooth can't be turned off here, since many remotes use it |
 | Sound output | Shows TV speakers or Soundbar (HDMI ARC) and opens the TV's Sound settings |
-| Screensaver | Starts the TV's screensaver right away |
+| Screensaver | Starts the TV's screensaver right away. Not shown on devices that don't let apps start it (Google TV Streamer) |
 | Restart… | Opens the TV's own power menu, which asks before restarting. On some TVs (OnePlus) that menu puts the TV to sleep after 10 seconds if you choose nothing; Back closes it |
 
 ## Talkies settings
@@ -70,6 +70,7 @@ Control Center → **Talkies settings**, or **hold OK on the ⚙ icon** (a press
 | Keys and location | Your TMDB key (picks), CricketData key (scores) and weather area. **Send from your phone** shows a QR code: scan it with a phone on the same Wi-Fi and paste them into the page it opens (it works once, for 5 minutes, only on your home network, and the keys stay on the TV). Or type or paste each one; keys are tried with the service first and only saved if it accepts them. **Remove** clears one |
 | Appearance | Cycles Auto (light by day, dark at night) → Light → Dark. With a wallpaper, Auto picks the look that suits the photo instead, and every look adds just enough veil behind the text to keep it readable |
 | For You | Shown or Hidden. Hidden removes the tabs and picks (the weather, time and date stay, larger), Up from the dock goes to the icons, and TMDB picks aren't fetched |
+| Dock apps | Every app, the dock's first (numbered): OK puts one in the dock or takes it out, the same as **Add to dock** and **Remove from dock** when you hold OK on an app. To change the order, hold OK on an app in the dock and choose **Move** |
 | Dock size | 5, 6, 7 (default), 8, 9 or 10 apps. The tiles grow or shrink so the dock always fills the screen's width; apps that no longer fit move to the front of All apps, and come back when it grows again |
 | RAM and storage | Shown (default) or Hidden: the two meters beside the icon buttons, with free RAM and free storage, updated every minute |
 | Live scores | Cricket and football (default), Cricket, Football or Off: what the score line and the score rows show |
