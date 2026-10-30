@@ -198,7 +198,8 @@ Control Center and remote-button remapping. They work together: run CleanYourTV 
 | **Inputs shows only Live TV** | Your device has no HDMI inputs of its own (a streamer like the Google TV Streamer or Shield). On a TV, its HDMI ports are listed. |
 | **Screensaver** opens settings instead | Some devices (Google TV Streamer) don't let apps start the screensaver directly: Talkies opens its settings, where **Start now** does. |
 | **"Google Assistant is having a problem"** | The Google TV launcher was disabled. From a computer: `adb shell pm enable com.google.android.apps.tv.launcherx` |
-| **Home opens a setup screen** | Google TV's setup wizard answers Home too: see [Google TV's setup wizard](docs/guide.md#google-tvs-setup-wizard). |
+| **Home opens a setup screen** | The Talkies Accessibility switch is off, so Google TV's setup wizard answered Home: turn it on ([First-time setup](#first-time-setup), step 1). |
+| **Screensaver shows Google's art, not your photos** | Installing with Talkies' build script turned off Google TV's setup wizard, which Ambient mode needs for your Google Photos. From a computer, once: `adb shell pm enable com.google.android.tungsten.setupwraith`. Home stays on Talkies. |
 | `INSTALL_FAILED_UPDATE_INCOMPATIBLE` | The installed Talkies was built on another computer: see *Coming from a version you built yourself* under [Updates](#updates). |
 | `adb connect` says **No route to host** on a Mac | macOS's Local Network privacy is blocking your terminal: System Settings → Privacy & Security → Local Network → allow it. |
 | No **Allow debugging?** prompt, or `unauthorized` | `adb kill-server`, then `adb connect` again with the TV on and its home screen showing. Some TVs only ask after Network debugging is switched off and on. |

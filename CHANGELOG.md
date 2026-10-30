@@ -3,6 +3,15 @@
 Versions are numbered *major.minor.fix*. While Talkies is in beta they start with 0: a new minor number brings new
 features, a new fix number only fixes. The version shows in Talkies settings → About.
 
+## Unreleased
+
+### Fixed
+- **The screensaver shows your Google Photos again** on TVs set up with `build-and-install.sh`. The script turned off
+  Google TV's setup wizard (so it couldn't take the Home button), and Ambient mode needs the wizard for your photos:
+  without it, it showed Google's art. Talkies' Accessibility switch already keeps Home on Talkies, so the script now
+  leaves the wizard on, and turns it back on where an earlier version turned it off. Installed from the APK? This
+  never applied.
+
 ## 1.1.1 — 29 October 2026
 
 ### New

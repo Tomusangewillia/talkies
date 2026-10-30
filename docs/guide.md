@@ -412,15 +412,19 @@ Google app declines to start it); asking for the title by name does.
 
 ## Google TV's setup wizard
 
-On Google TV, `build-and-install.sh` turns off Google's setup wizard (`com.google.android.tungsten.setupwraith`),
-because it also answers the Home button; it's the only app Talkies' scripts turn off. To turn it back on:
+Google TV's setup wizard (`com.google.android.tungsten.setupwraith`) answers the Home button too, but leave it on:
+Talkies' Accessibility switch sends Home to Talkies anyway, and the Ambient mode screensaver needs the wizard to show
+your Google Photos (without it, it quietly shows Google's art instead). Talkies doesn't turn anything off.
+
+Earlier versions of `build-and-install.sh` turned the wizard off. If your screensaver lost your photos, turn it back on
+(`build-and-install.sh` now does this too):
 
 ```bash
 adb -s "$TALKIES_TV" shell pm enable com.google.android.tungsten.setupwraith
 ```
 
-If you turn the wizard or the Google TV launcher back on, Android may switch Home back to them. To make Talkies the
-default again:
+Android may then make the wizard or the Google TV launcher the default Home app. With the Accessibility switch on
+that doesn't matter, but to make Talkies the default again:
 
 ```bash
 adb -s "$TALKIES_TV" shell cmd package set-home-activity --user 0 com.techpp.glass/.HomeActivity

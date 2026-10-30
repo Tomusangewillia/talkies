@@ -42,19 +42,13 @@ fi
 
 echo "== Setting as home"
 adb -s "$DEV" shell -n cmd package set-home-activity --user 0 $PKG/.HomeActivity || true
-# Google's setup wizard also claims HOME and would win; keep it off. The Google TV launcher stays enabled: the
-# Assistant opens its results and title pages there. It claims Home too, so Talkies' accessibility service
-# (Settings → Accessibility → Talkies) sends the Home button and the Google TV home screen back to Talkies.
-# But a Wi-Fi network saved during the TV's first setup belongs to the wizard, and disabling it deletes that network.
-# Then it's left on: re-join the network in Settings → Network and run this again (FORCE_SETUPWRAITH=1 on Ethernet).
+# Google TV's launcher and setup wizard stay on, though both claim HOME: Talkies' accessibility service (Settings →
+# Accessibility → Talkies) sends the Home button and the Google TV home screen back to Talkies. The Assistant opens
+# its results there, and the Ambient mode screensaver needs the wizard for your Google Photos (without it, it shows
+# Google's art). Earlier versions of this script turned the wizard off: put it back.
 WIZARD=com.google.android.tungsten.setupwraith
-if adb -s "$DEV" shell -n pm list packages -e $WIZARD | grep -q $WIZARD; then
-  if [ "${FORCE_SETUPWRAITH:-0}" != 1 ] && adb -s "$DEV" shell -n dumpsys wifi | grep -q "cname=$WIZARD"; then
-    echo "!! Left Google's setup wizard on: your Wi-Fi network was saved during setup and would be deleted with it."
-    echo "   Forget and re-join it in Settings → Network, then run this again. Until then Home may open the wizard."
-  else
-    adb -s "$DEV" shell -n pm disable-user --user 0 $WIZARD >/dev/null 2>&1 || true
-  fi
+if adb -s "$DEV" shell -n pm list packages -d $WIZARD | grep -q $WIZARD; then
+  adb -s "$DEV" shell -n pm enable $WIZARD >/dev/null 2>&1 && echo "Turned Google's setup wizard back on (your screensaver's photos need it)"
 fi
 adb -s "$DEV" shell -n pm enable com.google.android.apps.tv.launcherx >/dev/null 2>&1 || true
 if ! adb -s "$DEV" shell -n settings get secure enabled_accessibility_services | grep -q "$PKG"; then

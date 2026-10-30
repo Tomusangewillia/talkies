@@ -96,16 +96,9 @@ adb -s 192.168.1.20:5555 push tmdb_key.txt /sdcard/Android/data/com.techpp.glass
 adb -s 192.168.1.20:5555 push cricket_key.txt /sdcard/Android/data/com.techpp.glass/files/
 ```
 
-**Google TV only:** its setup wizard (`com.google.android.tungsten.setupwraith`) also answers Home. The script
-disables it with `pm disable-user --user 0`, **except** when your Wi-Fi network was saved during the TV's first
-setup: that network belongs to the wizard and disabling it deletes the network. Check first:
-
-```bash
-adb -s 192.168.1.20:5555 shell dumpsys wifi | grep -o 'cname=[^ ]*'
-```
-
-If it lists `setupwraith`, forget and re-join the network in Settings → Network first (on Ethernet it doesn't matter).
-More in the guide: [Google TV's setup wizard](guide.md#google-tvs-setup-wizard).
+**Google TV only:** leave its launcher and setup wizard (`com.google.android.tungsten.setupwraith`) on, although both
+answer Home: Talkies' Accessibility switch keeps the Home button on Talkies. The screensaver needs the wizard for your
+Google Photos. More in the guide: [Google TV's setup wizard](guide.md#google-tvs-setup-wizard).
 
 ## Scripts
 
