@@ -20,6 +20,8 @@ features, a new fix number only fixes. The version shows in Talkies settings →
   Sound output and Storage open, for TVs that keep the useful page somewhere else.
 
 ### Fixed
+- **Talkies settings → Home app on Google TV** opens the Accessibility switch, which is what to turn off to use
+  another home screen (Google TV ignores the default home app you pick, so the old chooser did nothing).
 - **Screensaver works on the Google TV Streamer** and other devices without Android's screensaver shortcut
   ([#7](https://github.com/rajupp/talkies/issues/7)): Talkies starts it the way Google Assistant does (an idea from
   [tvOS Launcher](https://github.com/techgenius1/tvOS-Launcher)), so the button is back where 1.1.2 had to hide it.

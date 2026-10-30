@@ -3174,7 +3174,16 @@ public class HomeActivity extends Activity {
             setStatus(ports[0], only ? "Under More inputs" : "Shown");
         }, true);
         // Switch between Talkies and another launcher with Android's Home app chooser.
-        addRow("Home app", currentHomeName(), () -> start(new Intent(Settings.ACTION_HOME_SETTINGS)), false);
+        // Google TV keeps its own launcher as the home app whatever is picked, so there Talkies has Home through its
+        // Accessibility switch: that's what to turn off to use another home screen.
+        if (isGoogleTvLauncher()) addRow("Home app", SleepService.isRunning() ? "Talkies" : currentHomeName(), () -> {
+            Toast.makeText(this, "To use another home screen, turn off Talkies here. Turn it back on to come back to Talkies",
+                    Toast.LENGTH_LONG).show();
+            Intent i = new Intent().setClassName("com.android.tv.settings", "com.android.tv.settings.oemlink.AccessibilitySettingsActivity");
+            if (pm.resolveActivity(i, 0) == null) i = new Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS);
+            start(i);
+        }, false);
+        else addRow("Home app", currentHomeName(), () -> start(new Intent(Settings.ACTION_HOME_SETTINGS)), false);
         addRow("Wallpaper", wallpaperLabel(), this::openWallpaperMenu, false);
         addRow("Control Center shortcuts", null, this::openShortcuts, false);
         final View[] anim = new View[1];
@@ -3745,6 +3754,16 @@ public class HomeActivity extends Activity {
             focusMenu(Math.min(at, menuItems.size() - 1));
         }
         moveHint.animate().alpha(0f).setDuration(120).withEndAction(() -> { moveHint.setVisibility(View.GONE); showServiceNote(); }).start();
+    }
+
+    /** Google TV's own launcher is installed (visible through the HOME query in the manifest). */
+    private boolean isGoogleTvLauncher() {
+        try {
+            pm.getApplicationInfo("com.google.android.apps.tv.launcherx", 0);
+            return true;
+        } catch (PackageManager.NameNotFoundException e) {
+            return false;
+        }
     }
 
     private String currentHomeName() {

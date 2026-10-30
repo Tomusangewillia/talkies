@@ -371,8 +371,8 @@ adb -s "$TALKIES_TV" shell rm /sdcard/Android/data/com.techpp.glass/files/wallpa
 
 - **Google TV:** Google TV keeps its own launcher as the home app whatever you choose in *Default home app* (checked
   on this TV), so third-party launchers, Talkies included, take the Home button with an accessibility service. To use
-  another one, turn off **Settings → Device Preferences → Accessibility → Talkies** and turn on that launcher's own
-  Home option. Turn Talkies' back on to return.
+  another one, turn off **Settings → Device Preferences → Accessibility → Talkies** (Talkies settings → **Home app**
+  opens it) and turn on that launcher's own Home option. Turn Talkies' back on to return.
 - **Android TV:** Talkies settings → **Home app** opens Android's chooser; pick another launcher and Talkies' service
   leaves the Home button to it. Pick Talkies there to come back.
 - **From a computer:**
