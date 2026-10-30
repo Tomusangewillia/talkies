@@ -26,7 +26,7 @@ import java.util.TreeMap;
  * can't clash with a key code. See {@link #id}.
  */
 final class RemoteKeys {
-    static final String INPUTS = "inputs", HOME = "home", NONE = "none", APP = "app:";
+    static final String INPUTS = "inputs", HOME = "home", NONE = "none", APP = "app:", RECENTS = "recents";
     static final String EXTRA_OPEN = "com.techpp.glass.OPEN";
 
     private RemoteKeys() { }
@@ -102,6 +102,7 @@ final class RemoteKeys {
     static String describe(Context c, String action) {
         if (action == null) return "Normal";
         if (action.equals(INPUTS)) return "Inputs";
+        if (action.equals(RECENTS)) return "Recent apps";
         if (action.equals(HOME)) return "Talkies";
         if (action.equals(NONE)) return "Nothing";
         if (action.startsWith(APP)) return "Open " + Channels.label(c.getPackageManager(), action.substring(APP.length()));
@@ -113,15 +114,18 @@ final class RemoteKeys {
         try {
             if (action.equals(HOME)) {
                 s.openHome();
-            } else if (action.equals(INPUTS)) {
-                s.startActivity(new Intent(Intent.ACTION_MAIN).setClass(s, HomeActivity.class).putExtra(EXTRA_OPEN, INPUTS)
+            } else if (action.equals(INPUTS) || action.equals(RECENTS)) {
+                s.startActivity(new Intent(Intent.ACTION_MAIN).setClass(s, HomeActivity.class).putExtra(EXTRA_OPEN, action)
                         .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_RESET_TASK_IF_NEEDED));
             } else if (action.startsWith(APP)) {
                 PackageManager pm = s.getPackageManager();
                 String pkg = action.substring(APP.length());
                 Intent i = pm.getLeanbackLaunchIntentForPackage(pkg);
                 if (i == null) i = pm.getLaunchIntentForPackage(pkg);
-                if (i != null) s.startActivity(i.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK));
+                if (i != null) {
+                    s.startActivity(i.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK));
+                    RecentApps.note(s, pkg);
+                }
             }
             // NONE: the button does nothing.
         } catch (RuntimeException e) {

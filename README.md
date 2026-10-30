@@ -256,7 +256,8 @@ Ideas (no code; Talkies' own implementation):
   the Finish setup checklist: [Plume](https://github.com/aradhyas8/Plume_Launcher). Remote keys also follow CleanYourTV's.
 - Bing wallpaper, channel cards in last-watched order and apps opening from their tile: Plume. Spotting a stopped
   accessibility service: [Matinee](https://github.com/Jarvis322/matinee).
-- Starting the screensaver the way Google Assistant does: [tvOS Launcher](https://github.com/techgenius1/tvOS-Launcher).
+- Starting the screensaver the way Google Assistant does, Recent apps and Control Center shortcuts:
+  [tvOS Launcher](https://github.com/techgenius1/tvOS-Launcher) (ideas; no code copied).
 - Bluetooth connect, Restart…, Talkies at power-on, Empty inputs and the settings fallback for TVs that hide the
   standard settings screen: [CleanYourTV](https://github.com/Gathin23/cleanyourtv)'s launcher and add-ons.
 - Now playing and the weather forecast: [Luma](https://github.com/0xProbabillity/luma-tv).

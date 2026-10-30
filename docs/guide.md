@@ -54,6 +54,7 @@ you set once is in **Talkies settings**, at the top.
 | Sleep timer | Cycles Off → 30 → 60 → 90 min; the time left shows on the right. A minute before, a card counts down over whatever is playing: **OK** gives 15 more minutes |
 | Turn off now | Puts the TV in standby |
 | Free up memory | Stops background apps (never system apps) and shows how much RAM came back |
+| Recent apps | The apps you opened through Talkies (dock, All apps, picks, channels, remote buttons), newest first, with their banners; OK opens one, **Close them all** frees their memory. Also on a remote button: Remote keys → Recent apps |
 | Storage | Shows the free space ("12.4 GB free of 32 GB"); OK opens the TV's storage settings |
 | Animations | Cycles the speed of every animation on the TV: 1× → 0.5× → Off. Faster makes menus and app switches feel snappier; Off also stills Talkies' own motion. Needs the `WRITE_SECURE_SETTINGS` grant (see [Google Assistant](#google-assistant-and-the-google-tv-launcher)) |
 | Network | Shows the Wi-Fi name (or Ethernet); OK opens Wi-Fi settings |
@@ -80,11 +81,12 @@ Control Center → **Talkies settings**, or **hold OK on the ⚙ icon** (a press
 | Football leagues | The leagues the Football row follows; see [Football](#football) |
 | Channels | Choose which app channels show below the dock, and their order |
 | Hidden apps | Shown once you've hidden an app: the apps you hid; OK shows one again |
-| Remote keys | Give a remote button another job: open an app, Inputs, Talkies, or nothing. **Add a key**, press the button, choose. Once it has a job, **When held** gives it a second one for holding it (over half a second). Navigation, OK, Back, Home, volume and power can't be changed. A button Android has no name for shows as *Button 0x…* (its code from the remote). If a button still just does its own job while Talkies waits for it (the app buttons on some TVs), the TV's software handles it before Android sees it, and no app can change it |
+| Remote keys | Give a remote button another job: open an app, Inputs, Recent apps, Talkies, or nothing. **Add a key**, press the button, choose. Once it has a job, **When held** gives it a second one for holding it (over half a second). Navigation, OK, Back, Home, volume and power can't be changed. A button Android has no name for shows as *Button 0x…* (its code from the remote). If a button still just does its own job while Talkies waits for it (the app buttons on some TVs), the TV's software handles it before Android sees it, and no app can change it |
 | Network debugging | "On · port 5555" while computers on your network can control the TV over ADB (how Talkies was installed). **Turn off** (needs the permission below) or open Developer options; turning it on again is done in Developer options |
 | Talkies at power-on | **After a restart** (default), or **Every time**: also when the TV wakes from standby into the last HDMI input or app. Pressing a button as it wakes keeps what's on screen |
 | Empty inputs | **Shown** (default), or **Under More inputs**: Inputs lists only ports with something plugged in, and a More inputs row brings back the rest |
 | Wallpaper | A picture of your own **from your phone** (a QR code) or **from this TV** (pictures on the TV or a USB drive), Bing's **picture of the day** (checked every few hours while Talkies is in front), or **Remove your picture**. See [Change the wallpaper](#change-the-wallpaper) |
+| Control Center shortcuts | Which screen Network, Bluetooth, Sound output and Storage open in Control Center: the TV's default, or any screen its settings apps offer (likely matches first, **Show every screen** for the rest). Useful where the TV keeps the useful page elsewhere |
 | Apps open from their tile | On by default: an app's window grows out of the tile or card you chose. It's Android's normal opening animation, started from the tile, so it costs nothing extra |
 | Home app | Shows the current home screen and opens Android's *Default home app* chooser (on Google TV the choice doesn't stick; see [Use another home screen](#use-another-home-screen)) |
 | Sharp YouTube pictures | Off by default. On: YouTube cards in Continue get YouTube's 1280-pixel thumbnails, looked up by title and channel |

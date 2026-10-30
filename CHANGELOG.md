@@ -14,6 +14,10 @@ features, a new fix number only fixes. The version shows in Talkies settings →
   - **Picture of the day** (Bing's) and **Remove your picture** are in the same menu, which replaces the Bing
     wallpaper row.
 - **Navigation sounds**: Android's click and move sounds, when the TV's System sounds switch is on.
+- **Recent apps**, in Control Center or on a remote button: the apps you opened through Talkies, newest first, with
+  their banners. OK opens one; Close them all frees their memory.
+- **Control Center shortcuts**, in Talkies settings: choose which of the TV's settings screens Network, Bluetooth,
+  Sound output and Storage open, for TVs that keep the useful page somewhere else.
 
 ### Fixed
 - **Screensaver works on the Google TV Streamer** and other devices without Android's screensaver shortcut

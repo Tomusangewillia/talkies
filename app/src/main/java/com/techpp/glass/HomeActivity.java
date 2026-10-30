@@ -304,7 +304,9 @@ public class HomeActivity extends Activity {
         dockIdx = Math.min(prefs.getInt("last_dock_col", 0), Math.max(0, dockCount - 1));
         root.post(() -> {
             focusDock(dockIdx);
-            if (RemoteKeys.INPUTS.equals(getIntent().getStringExtra(RemoteKeys.EXTRA_OPEN))) openInputs();
+            String open = getIntent().getStringExtra(RemoteKeys.EXTRA_OPEN);
+            if (RemoteKeys.INPUTS.equals(open)) openInputs();
+            else if (RemoteKeys.RECENTS.equals(open)) openRecents();
         });
     }
 
@@ -1750,6 +1752,7 @@ public class HomeActivity extends Activity {
         if (p.intentUri != null) {
             try {
                 startActivity(Intent.parseUri(p.intentUri, Intent.URI_INTENT_SCHEME).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK), fromTile());
+                if (p.pkg != null) RecentApps.note(this, p.pkg);
                 return;
             } catch (Exception ex) {
                 Log.w(TAG, "Link failed, opening the app: " + ex.getClass().getSimpleName());
@@ -1803,6 +1806,8 @@ public class HomeActivity extends Activity {
     private void startFromTile(Intent i) {
         try {
             startActivity(i.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK), fromTile());
+            String pkg = i.getPackage() != null ? i.getPackage() : i.getComponent() != null ? i.getComponent().getPackageName() : null;
+            if (pkg != null && !pkg.equals(getPackageName())) RecentApps.note(this, pkg);
         } catch (ActivityNotFoundException | SecurityException ex) {
             Log.w(TAG, "Cannot start " + i, ex);
         }
@@ -2514,6 +2519,7 @@ public class HomeActivity extends Activity {
         beginMenu(settingsAt, RemoteKeys.keyName(code) + "  ·  now: " + RemoteKeys.describe(this, RemoteKeys.action(this, code)));
         addRow("Open an app", null, () -> openKeyApps(code), false);
         addRow("Inputs", null, () -> setKey(code, RemoteKeys.INPUTS), false);
+        addRow("Recent apps", null, () -> setKey(code, RemoteKeys.RECENTS), false);
         addRow("Talkies", null, () -> setKey(code, RemoteKeys.HOME), false);
         addRow("Do nothing", null, () -> setKey(code, RemoteKeys.NONE), false);
         if (RemoteKeys.action(this, code) != null) {
@@ -2530,6 +2536,7 @@ public class HomeActivity extends Activity {
         beginMenu(settingsAt, "Hold " + RemoteKeys.keyName(code) + "  ·  now: " + (hold == null ? "same as a press" : RemoteKeys.describe(this, hold)));
         addRow("Open an app", null, () -> openKeyApps(code, true), false);
         addRow("Inputs", null, () -> setHold(code, RemoteKeys.INPUTS), false);
+        addRow("Recent apps", null, () -> setHold(code, RemoteKeys.RECENTS), false);
         addRow("Talkies", null, () -> setHold(code, RemoteKeys.HOME), false);
         if (hold != null) addRow("Same as a press", null, () -> setHold(code, null), false);
         showMenu(420);
@@ -3045,7 +3052,8 @@ public class HomeActivity extends Activity {
         }
         final View[] mem = new View[1];
         mem[0] = addRow("Free up memory", availableMb() + " MB free", () -> freeMemory(mem[0]), true);
-        addRow("Storage", storageLine(), () -> start(new Intent(Settings.ACTION_INTERNAL_STORAGE_SETTINGS)), false);
+        addRow("Recent apps", null, this::openRecents, false);
+        addRow("Storage", storageLine(), () -> { if (!openShortcut("storage")) start(new Intent(Settings.ACTION_INTERNAL_STORAGE_SETTINGS)); }, false);
         final View[] anim = new View[1];
         anim[0] = addRow("Animations", animationLabel(), () -> {
             if (!cycleAnimations()) {
@@ -3054,14 +3062,15 @@ public class HomeActivity extends Activity {
             }
             setStatus(anim[0], animationLabel());
         }, true);
-        addRow("Network", networkName(), () -> start(new Intent(Settings.ACTION_WIFI_SETTINGS)), false);
+        addRow("Network", networkName(), () -> { if (!openShortcut("network")) start(new Intent(Settings.ACTION_WIFI_SETTINGS)); }, false);
         final View[] speed = new View[1];
         speed[0] = addRow("Speed test", lastSpeed, () -> runSpeedTest(speed[0]), true);
         final View[] bt = new View[1];
-        bt[0] = addRow("Bluetooth", null, this::openBluetooth, false);
+        bt[0] = addRow("Bluetooth", null, () -> { if (!openShortcut("bluetooth")) openBluetooth(); }, false);
         bluetoothStatus(st -> { if (bt[0].isAttachedToWindow()) setStatus(bt[0], st); });
         // Android tells apps a soundbar is connected (HDMI ARC/eARC), not whether it's playing: say only what's known.
         addRow("Sound output", soundbarConnected() ? "Soundbar connected" : "TV speakers", () -> {
+            if (openShortcut("sound")) return;
             // Where the speakers are chosen differs by maker: Sony keeps it under Display & sound → Audio output, and
             // its plain Sound page has only System sounds. Elsewhere the Sound page (sound mode, outputs).
             Intent i = new Intent();
@@ -3167,6 +3176,7 @@ public class HomeActivity extends Activity {
         // Switch between Talkies and another launcher with Android's Home app chooser.
         addRow("Home app", currentHomeName(), () -> start(new Intent(Settings.ACTION_HOME_SETTINGS)), false);
         addRow("Wallpaper", wallpaperLabel(), this::openWallpaperMenu, false);
+        addRow("Control Center shortcuts", null, this::openShortcuts, false);
         final View[] anim = new View[1];
         anim[0] = addRow("Apps open from their tile", prefs.getBoolean("open_animation", true) ? "On" : "Off", () -> {
             boolean on = !prefs.getBoolean("open_animation", true);
@@ -3462,6 +3472,165 @@ public class HomeActivity extends Activity {
         String caption = bing.caption();
         if (prefs.getBoolean("bing_wallpaper", false) && caption != null) addRow("Wallpaper", "Bing: " + caption, () -> { }, true);
         showMenu(720);
+    }
+
+    // ---------------------------------------------------------------- recent apps
+
+    /**
+     * Control Center → Recent apps (or a remote button set to it): the apps you opened last, newest first, each with
+     * its banner. OK opens one. At the end, close them all (apps in the background only, never system apps).
+     */
+    private void openRecents() {
+        if (menuScroll.getVisibility() == View.VISIBLE) closeMenu();
+        List<String> recent = RecentApps.list(this);
+        beginMenu(P_CONTROL, recent.isEmpty() ? "Recent apps" : "Recent apps  ·  newest first");
+        int shown = 0;
+        for (String pkg : recent) {
+            Intent launch = pm.getLeanbackLaunchIntentForPackage(pkg);
+            if (launch == null) launch = pm.getLaunchIntentForPackage(pkg);
+            if (launch == null) continue;  // uninstalled since
+            final Intent open = launch;
+            AppEntry a = appFor(pkg);
+            String label = a != null ? a.label : Channels.label(pm, pkg);
+            LinearLayout row = (LinearLayout) addRow(label, shown == 0 ? "last used" : null, () -> startFromTile(open), false);
+            ImageView thumb = new ImageView(this);
+            Drawable d = a != null ? a.banner(pm) : null;
+            if (d == null) {
+                try { d = pm.getApplicationBanner(pkg); } catch (PackageManager.NameNotFoundException ignored) { }
+            }
+            if (d != null) {
+                thumb.setScaleType(ImageView.ScaleType.CENTER_CROP);
+                thumb.setImageDrawable(d);
+            } else {
+                thumb.setScaleType(ImageView.ScaleType.FIT_CENTER);
+                try { thumb.setImageDrawable(pm.getApplicationIcon(pkg)); } catch (PackageManager.NameNotFoundException ignored) { }
+            }
+            thumb.setBackground(rounded(theme.tileBg, 0, 4));
+            thumb.setClipToOutline(true);
+            LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(px(64), px(36));
+            lp.setMarginEnd(px(12));
+            lp.gravity = Gravity.CENTER_VERTICAL;
+            row.addView(thumb, 0, lp);
+            shown++;
+        }
+        if (shown == 0) {
+            addRow("Apps you open show up here", null, () -> { }, true);
+        } else {
+            final View[] close = new View[1];
+            close[0] = addRow("Close them all", "frees memory", () -> {
+                ActivityManager am = getSystemService(ActivityManager.class);
+                long before = availableMb();
+                for (String pkg : RecentApps.list(this)) {
+                    try {
+                        if ((pm.getApplicationInfo(pkg, 0).flags & ApplicationInfo.FLAG_SYSTEM) == 0) am.killBackgroundProcesses(pkg);
+                    } catch (PackageManager.NameNotFoundException ignored) { }
+                }
+                close[0].postDelayed(() -> setStatus(close[0], "Freed " + Math.max(0, availableMb() - before) + " MB"), 800);
+            }, true);
+        }
+        showMenu(460);
+    }
+
+    // ---------------------------------------------------------------- control center shortcuts
+
+    /** Control Center rows whose screen you can choose (Talkies settings → Control Center shortcuts): key → row name. */
+    private static final String[][] SHORTCUTS = {{"network", "Network"}, {"bluetooth", "Bluetooth"},
+            {"sound", "Sound output"}, {"storage", "Storage"}};
+    /** Words that make a settings screen a likely match for each row, shown first in the list. */
+    private static final String[][] SHORTCUT_WORDS = {{"wifi", "network", "internet", "ethernet"},
+            {"bluetooth", "accessor", "remote"}, {"sound", "audio", "speaker", "display"}, {"storage", "memory"}};
+
+    /** The screen you chose for a row, if any: true when it opened. A choice that no longer opens is forgotten. */
+    private boolean openShortcut(String key) {
+        String c = prefs.getString("shortcut_" + key, null);
+        if (c == null) return false;
+        android.content.ComponentName cn = android.content.ComponentName.unflattenFromString(c);
+        try {
+            if (cn == null) throw new ActivityNotFoundException();
+            startActivity(new Intent().setComponent(cn).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK));
+            return true;
+        } catch (ActivityNotFoundException | SecurityException e) {
+            prefs.edit().remove("shortcut_" + key).apply();
+            Toast.makeText(this, "The screen you chose isn't there any more, so the TV's own opens", Toast.LENGTH_LONG).show();
+            return false;
+        }
+    }
+
+    /**
+     * Talkies settings → Control Center shortcuts: for Network, Bluetooth, Sound output and Storage, which screen of the
+     * TV's settings OK opens (some TVs keep the useful one elsewhere, like Sony's speaker choice). An idea from tvOS
+     * Launcher's activity picker.
+     */
+    private void openShortcuts() {
+        beginMenu(settingsAt, "Control Center shortcuts  ·  what each row opens");
+        for (int i = 0; i < SHORTCUTS.length; i++) {
+            final int k = i;
+            addRow(SHORTCUTS[i][1], shortcutLabel(SHORTCUTS[i][0]), () -> openShortcutPicker(k, false), false);
+        }
+        showMenu(460);
+    }
+
+    private String shortcutLabel(String key) {
+        String c = prefs.getString("shortcut_" + key, null);
+        android.content.ComponentName cn = c == null ? null : android.content.ComponentName.unflattenFromString(c);
+        if (cn == null) return "TV default";
+        try {
+            return screenName(pm.getActivityInfo(cn, 0));
+        } catch (PackageManager.NameNotFoundException e) {
+            return "TV default";
+        }
+    }
+
+    /** "Display & sound" from the screen's label, or from its class name when the label is just the app's name. */
+    private String screenName(android.content.pm.ActivityInfo ai) {
+        String label = String.valueOf(ai.loadLabel(pm)).trim();
+        String app = String.valueOf(ai.applicationInfo.loadLabel(pm)).trim();
+        if (!label.isEmpty() && !label.equals(app)) return label;
+        String cls = ai.name.substring(ai.name.lastIndexOf('.') + 1).replace("Activity", "");
+        return cls.replaceAll("([a-z])([A-Z])", "$1 $2");
+    }
+
+    /**
+     * The screens the TV's settings apps let others open, likely matches for the row first; with {@code all}, every
+     * one. OK on one makes it the row's; TV default puts the row back.
+     */
+    private void openShortcutPicker(int k, boolean all) {
+        String key = SHORTCUTS[k][0];
+        background.execute(() -> {
+            List<android.content.pm.ActivityInfo> found = new ArrayList<>();
+            for (android.content.pm.PackageInfo p : pm.getInstalledPackages(PackageManager.GET_ACTIVITIES)) {
+                if (p.activities == null || p.applicationInfo == null || (p.applicationInfo.flags & ApplicationInfo.FLAG_SYSTEM) == 0) continue;
+                if (!p.packageName.toLowerCase(Locale.ROOT).contains("settings")) continue;
+                for (android.content.pm.ActivityInfo ai : p.activities) {
+                    if (ai.exported && ai.enabled && ai.permission == null) found.add(ai);
+                }
+            }
+            List<android.content.pm.ActivityInfo> likely = new ArrayList<>(), rest = new ArrayList<>();
+            for (android.content.pm.ActivityInfo ai : found) {
+                String n = ai.name.toLowerCase(Locale.ROOT);
+                boolean match = false;
+                for (String w : SHORTCUT_WORDS[k]) if (n.contains(w)) { match = true; break; }
+                (match ? likely : rest).add(ai);
+            }
+            List<String[]> rows = new ArrayList<>();  // name, component
+            for (android.content.pm.ActivityInfo ai : likely) rows.add(new String[]{screenName(ai), ai.packageName + "/" + ai.name});
+            if (all) for (android.content.pm.ActivityInfo ai : rest) rows.add(new String[]{screenName(ai), ai.packageName + "/" + ai.name});
+            final int more = all ? 0 : rest.size();
+            runOnUiThread(() -> {
+                beginMenu(settingsAt, SHORTCUTS[k][1] + " opens…");
+                addRow("TV default", null, () -> {
+                    prefs.edit().remove("shortcut_" + key).apply();
+                    openShortcuts();
+                }, false);
+                for (String[] r : rows) addRow(r[0], r[1].substring(0, r[1].indexOf('/')), () -> {
+                    prefs.edit().putString("shortcut_" + key, r[1]).apply();
+                    Toast.makeText(this, SHORTCUTS[k][1] + " opens " + r[0] + ". Try it from Control Center", Toast.LENGTH_LONG).show();
+                    openShortcuts();
+                }, false);
+                if (more > 0) addRow("Show every screen", String.valueOf(more), () -> openShortcutPicker(k, true), false);
+                showMenu(520);
+            });
+        });
     }
 
     // ---------------------------------------------------------------- dock apps
@@ -3933,6 +4102,8 @@ public class HomeActivity extends Activity {
         }
         focusDock(dockIdx);
         // A remote button set to "Inputs" (Control Center → Remote keys).
-        if (RemoteKeys.INPUTS.equals(intent.getStringExtra(RemoteKeys.EXTRA_OPEN))) root.post(this::openInputs);
+        String open = intent.getStringExtra(RemoteKeys.EXTRA_OPEN);
+        if (RemoteKeys.INPUTS.equals(open)) root.post(this::openInputs);
+        else if (RemoteKeys.RECENTS.equals(open)) root.post(this::openRecents);
     }
 }
