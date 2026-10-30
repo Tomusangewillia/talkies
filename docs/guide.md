@@ -74,6 +74,7 @@ Control Center → **Talkies settings**, or **hold OK on the ⚙ icon** (a press
 | Keys and location | Your TMDB key (picks), CricketData key (scores) and weather area. **Send from your phone** shows a QR code: scan it with a phone on the same Wi-Fi and paste them into the page it opens (it works once, for 5 minutes, only on your home network, and the keys stay on the TV). Or type or paste each one; keys are tried with the service first and only saved if it accepts them. **Remove** clears one |
 | Appearance | Cycles Auto (light by day, dark at night) → Light → Dark. With a wallpaper, Auto picks the look that suits the photo instead, and every look adds just enough veil behind the text to keep it readable |
 | For You | Shown or Hidden. Hidden removes the tabs and picks (the weather, time and date stay, larger), Up from the dock goes to the icons, and TMDB picks aren't fetched |
+| Picks languages | Only while For You is shown: **All** (the default) or the languages you choose for Trending and New in …. See [Languages](#languages) |
 | Hide spoilers | Off (default) or On. On: an episode you haven't started yet shows the show's own art in Continue instead of the app's still from that episode, or the still blurred when the app gives nothing else. Episodes you're partway through keep their still |
 | Dock apps | Every app, the dock's first (numbered): OK puts one in the dock or takes it out, the same as **Add to dock** and **Remove from dock** when you hold OK on an app. To change the order, hold OK on an app in the dock and choose **Move** |
 | Dock size | 5, 6, 7 (default), 8, 9 or 10 apps. The tiles grow or shrink so the dock always fills the screen's width; apps that no longer fit move to the front of All apps, and come back when it grows again |
@@ -124,6 +125,17 @@ service TMDB lists for your country (Viaplay, Canal+, RTL+, Joyn, Stan, Crave…
 
 **No streaming apps?** With none of them installed, the tabs show the same kind of titles anyway, and OK plays the
 title's trailer in YouTube. The line under the card says where it streams ("Trailer · on Netflix").
+
+### Languages
+
+Talkies settings → **Picks languages**. The list offers the languages your country's picks come in, most common
+first, and English (it fills in after the picks first load). OK on one shows only the languages you choose; OK again
+leaves it out; **All languages** goes back to everything. The picks refresh straight away.
+
+With languages chosen, Trending takes popular titles in them from anywhere (a Korean series streaming in France, not
+only French-made ones), two for each popular English title if English is one of them. New in … still means made in
+your country, in those languages, so it can be short. It's the title's original language: a film dubbed into Tamil
+still counts as Hindi, and TMDB doesn't tell Brazilian from European Portuguese.
 
 **Which country:** the TV's time zone (where it actually is; many TVs stay on "English (United States)" wherever
 they are), then its language setting. If that's wrong for you, set it: `./set-region.sh GB` (`--remove` to go back).

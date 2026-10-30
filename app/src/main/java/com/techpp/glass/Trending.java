@@ -122,6 +122,60 @@ final class Trending {
         prefs = c.getSharedPreferences("trending", Context.MODE_PRIVATE);
     }
 
+    // ---------------------------------------------------------------- languages (Talkies settings → Picks languages)
+
+    /** The original languages picks may be in, as TMDB's codes (ta, en, fr…); empty for all of them. */
+    Set<String> languages() {
+        Set<String> out = new java.util.LinkedHashSet<>();
+        for (String c : prefs.getString("languages", "").split(",")) if (!c.isEmpty()) out.add(c);
+        return out;
+    }
+
+    /** Saves the choice; the picks refetch at the next refresh check, not after six hours. */
+    void setLanguages(Set<String> codes) {
+        prefs.edit().putString("languages", String.join(",", codes)).apply();
+    }
+
+    /**
+     * The languages this country's lists bring up, most common first, then English: what the Languages screen offers.
+     * Before a refresh has counted them, the languages of the saved picks; empty with none.
+     */
+    List<String> seenLanguages() {
+        List<String> out = new ArrayList<>();
+        for (String c : prefs.getString("seen_languages", "").split(",")) if (!c.isEmpty()) out.add(c);
+        if (!out.isEmpty()) return out;
+        Map<String, Integer> count = new LinkedHashMap<>();
+        for (Pick p : cached()) if (!p.lang.isEmpty() && !p.lang.equals("xx")) count.merge(p.lang, 1, Integer::sum);
+        out.addAll(count.keySet());
+        out.sort((x, y) -> count.get(y) - count.get(x));
+        if (!out.isEmpty() && !out.contains("en")) out.add("en");
+        return out;
+    }
+
+    /** "Tamil", "French"; TMDB's own codes Android doesn't know by their name. */
+    static String languageName(String code) {
+        if (code.equals("cn")) return "Cantonese";
+        String name = new Locale(code).getDisplayLanguage(Locale.ENGLISH);
+        return name.isEmpty() || name.equals(code) ? code : name;
+    }
+
+    /** Counts the original languages in candidate lists, and saves them most common first (English last if absent). */
+    private void noteLanguages(boolean replace, List<JSONObject> lists) {
+        Map<String, Integer> count = new LinkedHashMap<>();
+        if (!replace) {
+            List<String> old = seenLanguages();
+            for (int i = 0; i < old.size(); i++) count.put(old.get(i), 1000 - i);  // kept, ahead of what's new
+        }
+        for (JSONObject o : lists) {
+            String c = o.optString("original_language", "");
+            if (!c.isEmpty() && !c.equals("xx")) count.merge(c, 1, Integer::sum);
+        }
+        List<String> order = new ArrayList<>(count.keySet());
+        order.sort((a, b) -> count.get(b) - count.get(a));
+        if (!order.contains("en")) order.add("en");
+        prefs.edit().putString("seen_languages", String.join(",", order)).apply();
+    }
+
     private File keyFile() { return new File(dir.getParentFile(), "tmdb_key.txt"); }
 
     String key() {
@@ -199,18 +253,21 @@ final class Trending {
         String cc = Region.country(ctx), was = prefs.getString("region", null);
         if (was == null) prefs.edit().putString("region", cc).apply();  // first run with countries: just remember it
         if (prefs.getInt("key_hash", 0) != key.hashCode() || prefs.getInt("version", 0) != CACHE_VERSION
-                || (was != null && !cc.equals(was))) {
-            // A new key, a new cache layout, or the TV now in another country: fetch right away.
+                || (was != null && !cc.equals(was))
+                || !prefs.getString("languages", "").equals(prefs.getString("languages_fetched", ""))) {
+            // A new key, a new cache layout, the TV now in another country, or other languages: fetch right away.
             prefs.edit().putInt("key_hash", key.hashCode()).putInt("version", CACHE_VERSION).putString("region", cc)
                     .remove("ok_at").remove("try_at").apply();
         }
         if (now - prefs.getLong("ok_at", 0) < REFRESH_MS || now - prefs.getLong("try_at", 0) < RETRY_MS) return;
         prefs.edit().putLong("try_at", now).apply();
         running = true;
+        String langs = prefs.getString("languages", "");
         worker.execute(() -> {
             try {
                 fetch(key);
-                prefs.edit().putLong("ok_at", System.currentTimeMillis()).apply();
+                // Fetched for these languages: if they changed meanwhile, the next check fetches again.
+                prefs.edit().putLong("ok_at", System.currentTimeMillis()).putString("languages_fetched", langs).apply();
                 List<Pick> all = cached();
                 main.post(() -> l.onPicks(all));
             } catch (Exception e) {
@@ -294,29 +351,39 @@ final class Trending {
         String common = "&watch_region=" + region + "&with_watch_monetization_types=flatrate&include_adult=false"
                 + "&sort_by=popularity.desc" + (elsewhere == null ? "&with_watch_providers=" + ids : "");
 
-        // The six candidate lists, all at once.
+        // The six candidate lists, all at once. With languages chosen (Picks languages), "New in …" keeps to them, and
+        // Trending's two sides become those languages (from anywhere, not only this country) and English, if chosen.
+        Set<String> chosen = languages();
+        List<String> others = new ArrayList<>(chosen);
+        others.remove("en");
+        boolean withEnglish = chosen.isEmpty() || chosen.contains("en");
+        String only = chosen.isEmpty() ? "" : "&with_original_language=" + String.join("|", chosen);
+        String localBy = chosen.isEmpty() ? "with_origin_country=" + region : "with_original_language=" + String.join("|", others);
         String popular = "&vote_count.gte=10" + common;
         java.util.concurrent.Future<JSONObject> newFilms = later(key, "/discover/movie?with_origin_country=" + region
-                + "&primary_release_date.gte=" + day(-180) + "&primary_release_date.lte=" + day(0) + common);
+                + "&primary_release_date.gte=" + day(-180) + "&primary_release_date.lte=" + day(0) + only + common);
         java.util.concurrent.Future<JSONObject> newShows = later(key, "/discover/tv?with_origin_country=" + region
-                + "&air_date.gte=" + day(-60) + "&air_date.lte=" + day(0) + common);
-        java.util.concurrent.Future<JSONObject> localFilms = later(key, "/discover/movie?with_origin_country=" + region + popular);
-        java.util.concurrent.Future<JSONObject> localShows = later(key, "/discover/tv?with_origin_country=" + region + popular);
-        java.util.concurrent.Future<JSONObject> englishFilms = later(key, "/discover/movie?with_original_language=en" + popular);
-        java.util.concurrent.Future<JSONObject> englishShows = later(key, "/discover/tv?with_original_language=en" + popular);
+                + "&air_date.gte=" + day(-60) + "&air_date.lte=" + day(0) + only + common);
+        boolean anyLocal = chosen.isEmpty() || !others.isEmpty();
+        java.util.concurrent.Future<JSONObject> localFilms = anyLocal ? later(key, "/discover/movie?" + localBy + popular) : null;
+        java.util.concurrent.Future<JSONObject> localShows = anyLocal ? later(key, "/discover/tv?" + localBy + popular) : null;
+        java.util.concurrent.Future<JSONObject> englishFilms = withEnglish ? later(key, "/discover/movie?with_original_language=en" + popular) : null;
+        java.util.concurrent.Future<JSONObject> englishShows = withEnglish ? later(key, "/discover/tv?with_original_language=en" + popular) : null;
 
         // "New in …" first, so Trending can leave its titles out.
-        List<Pick> india = keepMixed(key, services, INDIA, new HashSet<>(), new int[]{1},
-                merge(tag(newFilms.get().getJSONArray("results"), "movie"), tag(newShows.get().getJSONArray("results"), "tv")));
+        List<JSONObject> fresh = merge(tag(results(newFilms), "movie"), tag(results(newShows), "tv"));
+        List<Pick> india = keepMixed(key, services, INDIA, new HashSet<>(), new int[]{1}, fresh);
         Set<String> inIndia = new HashSet<>();
         for (Pick p : india) inIndia.add(p.kind + p.id);
 
         // Trending: popular titles from this country and popular English titles, two of the first for each one of the
         // second. Where the country's own titles are English anyway (US, UK…), just what's popular here.
-        List<JSONObject> local = merge(tag(localFilms.get().getJSONArray("results"), "movie"),
-                tag(localShows.get().getJSONArray("results"), "tv"));
-        List<JSONObject> english = merge(tag(englishFilms.get().getJSONArray("results"), "movie"),
-                tag(englishShows.get().getJSONArray("results"), "tv"));
+        List<JSONObject> local = merge(tag(results(localFilms), "movie"), tag(results(localShows), "tv"));
+        List<JSONObject> english = merge(tag(results(englishFilms), "movie"), tag(results(englishShows), "tv"));
+        // What languages this country watches, for the Languages screen: all of them only when nothing is chosen.
+        List<JSONObject> seen = new ArrayList<>(fresh);
+        seen.addAll(local);
+        noteLanguages(chosen.isEmpty(), seen);
         List<Pick> trend = Region.englishSpeaking(region)
                 ? keepMixed(key, services, TRENDING, inIndia, new int[]{0, 1}, english, local)
                 : keepMixed(key, services, TRENDING, inIndia, new int[]{0, 0, 1}, local, english);
@@ -324,6 +391,11 @@ final class Trending {
         List<Pick> picks = new ArrayList<>(trend);
         picks.addAll(india);
         save(downloadImages(picks));
+    }
+
+    /** A candidate list's titles; none for a list that wasn't asked for. */
+    private static JSONArray results(java.util.concurrent.Future<JSONObject> list) throws Exception {
+        return list == null ? new JSONArray() : list.get().getJSONArray("results");
     }
 
     private java.util.concurrent.Future<JSONObject> later(String key, String path) {

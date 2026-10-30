@@ -1193,6 +1193,8 @@ public class HomeActivity extends Activity {
                 ? "Trending and new picks need a free TMDB key: Control Center → Talkies settings → Keys and location"
                 : trending.matchedApps() == 0
                 ? "Trending shows what's on your streaming apps, and none Talkies knows is installed. With YouTube installed, it shows trailers instead."
+                : !trending.languages().isEmpty()
+                ? "Nothing in " + languagesLabel() + " on your apps here right now. More languages: Talkies settings → Picks languages."
                 : "Picks appear here once Talkies is online. Shows you watch show up under Continue.");
     }
 
@@ -3220,6 +3222,7 @@ public class HomeActivity extends Activity {
             buildPicksRow(0);
             if (forYou) refreshOnline();
         }, true);
+        if (forYou) addRow("Picks languages", languagesLabel(), this::openPicksLanguages, false);
         final View[] sp = new View[1];
         sp[0] = addRow("Hide spoilers", WatchNext.hideSpoilers(this) ? "On" : "Off", () -> {
             boolean on = !WatchNext.hideSpoilers(this);
@@ -3329,6 +3332,45 @@ public class HomeActivity extends Activity {
         })), true);
         addRow("About", null, this::openAbout, false);
         showMenu(350);
+    }
+
+    private String languagesLabel() {
+        Set<String> chosen = trending.languages();
+        if (chosen.isEmpty()) return "All";
+        List<String> names = new ArrayList<>();
+        for (String c : chosen) names.add(Trending.languageName(c));
+        return String.join(", ", names);
+    }
+
+    /**
+     * Talkies settings → Picks languages: the languages Trending and New in … show, from those the country's lists
+     * bring up. OK on one shows only the ones you choose; OK again leaves it out; All languages goes back to all.
+     */
+    private void openPicksLanguages() {
+        List<String> codes = new ArrayList<>(trending.seenLanguages());
+        for (String c : trending.languages()) if (!codes.contains(c)) codes.add(c);
+        beginMenu(settingsAt, codes.isEmpty() ? "Picks languages  ·  they show after the picks first load"
+                : "Picks languages  ·  OK on one to show only the ones you choose");
+        List<View> rows = new ArrayList<>();
+        Runnable mark = () -> {
+            Set<String> chosen = trending.languages();
+            setStatus(rows.get(0), chosen.isEmpty() ? "On" : null);
+            for (int i = 0; i < codes.size(); i++) setStatus(rows.get(i + 1), chosen.contains(codes.get(i)) ? "On" : null);
+        };
+        rows.add(addRow("All languages", null, () -> {
+            trending.setLanguages(new java.util.LinkedHashSet<>());
+            mark.run();
+            refreshOnline();
+        }, true));
+        for (String code : codes) rows.add(addRow(Trending.languageName(code), null, () -> {
+            Set<String> chosen = trending.languages();
+            if (!chosen.remove(code)) chosen.add(code);
+            trending.setLanguages(chosen);
+            mark.run();
+            refreshOnline();
+        }, true));
+        mark.run();
+        showMenu(380);
     }
 
     private boolean ownWallpaper() {

@@ -9,6 +9,9 @@ features, a new fix number only fixes. The version shows in Talkies settings →
 - **A wallpaper folder.** Talkies settings → Wallpaper → From this TV now lists your folders first (on the TV and USB
   drives): OK on one shows a new picture from it each day, in name order. Choosing one picture, or **Remove your
   picture**, stops it.
+- **Picks languages** (Talkies settings, under For You): show Trending and New in … only in the languages you
+  choose, say Tamil and English. The list offers the languages your country's picks come in; All is the default.
+  An idea from @MaheshKRamasamy.
 
 ## 1.2.2 — 30 October 2026
 
