@@ -2489,8 +2489,20 @@ public class HomeActivity extends Activity {
     // ---------------------------------------------------------------- remote keys
 
     /** One row per button with a job ("Prog Red → Open JioHotstar"), then Add a key. */
+    private String remoteKeysLabel() {
+        int n = RemoteKeys.all(this).size();
+        return !SleepService.watchButtons(this) ? "Off" : n == 0 ? "On" : "On · " + n + " set";
+    }
+
     private void openRemoteKeys() {
-        beginMenu(settingsAt, "Remote keys");
+        boolean on = SleepService.watchButtons(this);
+        beginMenu(settingsAt, on ? "Remote keys  ·  On: some TVs then change volume one step per press"
+                : "Remote keys  ·  Off: holding Volume works on every TV");
+        addRow("Remote keys", on ? "On" : "Off", () -> {
+            prefs.edit().putBoolean("remote_keys_on", !on).apply();
+            SleepService.applyButtonWatching();
+            openRemoteKeys();
+        }, false);
         for (Map.Entry<Integer, String> e : RemoteKeys.all(this).entrySet()) {
             int code = e.getKey();
             String hold = RemoteKeys.holdAction(this, code);
@@ -2498,12 +2510,18 @@ public class HomeActivity extends Activity {
                     + (hold == null ? "" : "  ·  hold: " + RemoteKeys.describe(this, hold)), () -> openKeyActions(code), false);
         }
         addRow("Add a key", null, this::learnKey, false);
-        showMenu(360);
+        showMenu(540);  // wide enough for a key's name beside "Open … · hold: Open …"
     }
 
     /** Waits for the next remote button (through the accessibility service, so the TV doesn't act on it). */
     private void learnKey() {
         if (!SleepService.isRunning()) { needsTurnOffSetup(); return; }
+        if (!SleepService.watchButtons(this)) {
+            prefs.edit().putBoolean("remote_keys_on", true).apply();
+            SleepService.applyButtonWatching();
+            Toast.makeText(this, "Remote keys are on. On some TVs, holding Volume then changes it one step per press",
+                    Toast.LENGTH_LONG).show();
+        }
         beginMenu(settingsAt, "Press the button on your remote");
         addRow("Waiting for a button…", "Back cancels", () -> { }, true);
         menuClosed = () -> { SleepService.learn(null); focusTop(settingsAt); };
@@ -2554,6 +2572,7 @@ public class HomeActivity extends Activity {
 
     private void setKey(int code, String action) {
         RemoteKeys.set(this, code, action);
+        SleepService.applyButtonWatching();  // the first key, or the last one gone, can change whether it's on
         Toast.makeText(this, RemoteKeys.keyName(code) + ": " + RemoteKeys.describe(this, action), Toast.LENGTH_SHORT).show();
         openRemoteKeys();
     }
@@ -3156,7 +3175,7 @@ public class HomeActivity extends Activity {
         addRow("Channels", null, this::openChannelsEditor, false);
         int hiddenCount = hiddenApps().size();
         if (hiddenCount > 0) addRow("Hidden apps", String.valueOf(hiddenCount), this::openHiddenApps, false);
-        addRow("Remote keys", RemoteKeys.all(this).isEmpty() ? null : RemoteKeys.all(this).size() + " set",
+        addRow("Remote keys", remoteKeysLabel(),
                 this::openRemoteKeys, false);
         final View[] adb = new View[1];
         adb[0] = addRow("Network debugging", "Checking…", this::openNetworkDebugging, false);

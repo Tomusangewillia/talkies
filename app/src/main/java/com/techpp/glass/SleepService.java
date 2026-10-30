@@ -181,6 +181,7 @@ public class SleepService extends AccessibilityService {
     /** Reports the next remote button to {@code l} (or stops listening, with null). False if the service is off. */
     static boolean learn(KeyListener l) {
         learning = l;
+        applyButtonWatching();
         return running != null;
     }
 
@@ -239,6 +240,7 @@ public class SleepService extends AccessibilityService {
                 Log.w(TAG, "Couldn't show the sleep warning: " + e);
                 warning = null;
             }
+            updateKeyFilter();  // OK has to reach the warning
         }
         tick();
     }
@@ -265,6 +267,7 @@ public class SleepService extends AccessibilityService {
         }
         warning = null;
         warningText = null;
+        updateKeyFilter();
     }
 
     /**
@@ -292,13 +295,42 @@ public class SleepService extends AccessibilityService {
             info.packageNames = watched.toArray(new String[0]);
             setServiceInfo(info);
         }
+        updateKeyFilter();
         Log.i(TAG, "Built-in home screens: " + stockHomes);
     }
 
     /**
-     * Whether the default home app is a launcher you installed (not Talkies, not one the TV came with, not Android's
-     * "which app?" chooser). Then Talkies stays out of the way of the Home button.
+     * Talkies settings → Remote keys, On or Off. Unless you chose, it's on once you've given a button a job. Off, the
+     * service doesn't watch the remote's buttons, because on some TVs any service that does stops a held Volume button
+     * repeating, in every app. Home still reaches Talkies, through the window watcher (Google TV's home may show for a
+     * moment). The sleep warning's OK and choosing a button for a remote key turn watching on while they need it.
      */
+    static boolean watchButtons(Context c) {
+        android.content.SharedPreferences p = c.getSharedPreferences("home", MODE_PRIVATE);
+        return p.contains("remote_keys_on") ? p.getBoolean("remote_keys_on", true) : !RemoteKeys.all(c).isEmpty();
+    }
+
+    /** After Remote keys changes: the running service starts or stops watching buttons now. */
+    static void applyButtonWatching() {
+        if (running != null) running.main.post(running::updateKeyFilter);
+    }
+
+    private boolean filtering;
+
+    /** Watches the buttons while remote keys are on, the sleep warning is up, or a button is being chosen. */
+    private void updateKeyFilter() {
+        boolean want = watchButtons(this) || warning != null || learning != null;
+        android.accessibilityservice.AccessibilityServiceInfo info = getServiceInfo();
+        if (info == null) return;
+        boolean has = (info.flags & android.accessibilityservice.AccessibilityServiceInfo.FLAG_REQUEST_FILTER_KEY_EVENTS) != 0;
+        if (has == want && filtering == want) return;
+        info.flags = want ? info.flags | android.accessibilityservice.AccessibilityServiceInfo.FLAG_REQUEST_FILTER_KEY_EVENTS
+                : info.flags & ~android.accessibilityservice.AccessibilityServiceInfo.FLAG_REQUEST_FILTER_KEY_EVENTS;
+        setServiceInfo(info);
+        filtering = want;
+        Log.i(TAG, want ? "Watching the remote's buttons" : "Remote's buttons left to the TV");
+    }
+
     private boolean talkiesIsDefaultHome() {
         android.content.pm.ResolveInfo r = getPackageManager().resolveActivity(
                 new Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_HOME), android.content.pm.PackageManager.MATCH_DEFAULT_ONLY);
@@ -313,6 +345,10 @@ public class SleepService extends AccessibilityService {
         return true;
     }
 
+    /**
+     * Whether the default home app is a launcher you installed (not Talkies, not one the TV came with, not Android's
+     * "which app?" chooser). Then Talkies stays out of the way of the Home button.
+     */
     private boolean otherLauncherChosen() {
         android.content.pm.ResolveInfo r = getPackageManager().resolveActivity(
                 new Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_HOME), android.content.pm.PackageManager.MATCH_DEFAULT_ONLY);

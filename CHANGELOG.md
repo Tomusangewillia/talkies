@@ -20,6 +20,12 @@ features, a new fix number only fixes. The version shows in Talkies settings →
   Sound output and Storage open, for TVs that keep the useful page somewhere else.
 
 ### Fixed
+- **Holding Volume changes it smoothly again** on TVs (like OnePlus's) where it moved one step per press while
+  Talkies was on: Android stops repeating a held button while an app watches the remote's buttons. Talkies now
+  watches them only while **Remote keys** is on (Talkies settings → Remote keys, On or Off), which it is once you've
+  given a button a job. Off, Home still brings Talkies back, with Google TV's home showing for a moment first; the
+  sleep timer's "Press OK for 15 more minutes" still works.
+- **The Remote keys list shows each button's name** beside a long job ("Open … · hold: Open …").
 - **Talkies settings → Home app on Google TV** opens the Accessibility switch, which is what to turn off to use
   another home screen (Google TV ignores the default home app you pick, so the old chooser did nothing).
 - **Screensaver works on the Google TV Streamer** and other devices without Android's screensaver shortcut
