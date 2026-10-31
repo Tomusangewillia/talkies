@@ -200,6 +200,7 @@ public class HomeActivity extends Activity {
     private View forYouHead, bigClock;
     private TextView picksHint;
     private TextView bigTime, bigAmPm, bigDate, bigWeather;
+    private ImageView weatherIcon;
     private View bigRule;
     private boolean inFront;
 
@@ -262,6 +263,7 @@ public class HomeActivity extends Activity {
         bigAmPm = findViewById(R.id.big_ampm);
         bigRule = findViewById(R.id.big_rule);
         bigWeather = findViewById(R.id.big_weather);
+        weatherIcon = findViewById(R.id.weather_icon);
         forYou = prefs.getBoolean("for_you", true);
         meters = findViewById(R.id.meters);
         meters.setVisibility(prefs.getBoolean("meters", true) ? View.VISIBLE : View.GONE);
@@ -493,6 +495,7 @@ public class HomeActivity extends Activity {
         bigWeather.setText(weatherLine == null ? "" : weatherLine);
         if (meters.getVisibility() == View.VISIBLE) meters.update();
         bigWeather.setVisibility(weatherLine == null ? View.GONE : View.VISIBLE);
+        updateWeatherIcon();
         updateScore();
     }
 
@@ -590,6 +593,31 @@ public class HomeActivity extends Activity {
         weatherLine = line;
         boolean nowDay = isDayNow();
         if (nowDay != day) { day = nowDay; applyTheme(); } else updateInfo();
+        updateWeatherIcon();
+    }
+
+    private void updateWeatherIcon() {
+        if (weatherLine == null) {
+            weatherIcon.setVisibility(View.GONE);
+            return;
+        }
+        weatherIcon.setVisibility(View.VISIBLE);
+        int iconRes = getWeatherIcon(weatherLine);
+        if (iconRes != 0) {
+            weatherIcon.setImageResource(iconRes);
+            weatherIcon.setImageTintList(ColorStateList.valueOf(theme.text2));
+        }
+    }
+
+    private int getWeatherIcon(String weatherLine) {
+        if (weatherLine == null) return 0;
+        String lower = weatherLine.toLowerCase();
+        if (lower.contains("sunny") || lower.contains("clear")) return R.drawable.ic_weather_sunny;
+        if (lower.contains("rain") || lower.contains("showers") || lower.contains("drizzle")) return R.drawable.ic_weather_rain;
+        if (lower.contains("snow")) return R.drawable.ic_weather_snow;
+        if (lower.contains("thunder") || lower.contains("storm")) return R.drawable.ic_weather_thunder;
+        if (lower.contains("cloudy") || lower.contains("overcast") || lower.contains("fog")) return R.drawable.ic_weather_cloudy;
+        return R.drawable.ic_weather_cloudy; // default
     }
 
     // ---------------------------------------------------------------- apps
