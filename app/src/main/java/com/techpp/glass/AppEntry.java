@@ -15,22 +15,27 @@ final class AppEntry {
     final String label;
     final ComponentName component;
     private final ActivityInfo info;
+    /** False for a phone app with no TV entry (Chrome, MacroDroid…): opened as a phone launcher would. */
+    final boolean tv;
 
     private boolean loaded;
     private Drawable banner;
     private Drawable icon;
     private int glow = 0;
 
-    AppEntry(ActivityInfo info, String label) {
+    AppEntry(ActivityInfo info, String label) { this(info, label, true); }
+
+    AppEntry(ActivityInfo info, String label, boolean tv) {
         this.info = info;
         this.pkg = info.packageName;
         this.label = label;
         this.component = new ComponentName(info.packageName, info.name);
+        this.tv = tv;
     }
 
     Intent launchIntent() {
         return new Intent(Intent.ACTION_MAIN)
-                .addCategory(Intent.CATEGORY_LEANBACK_LAUNCHER)
+                .addCategory(tv ? Intent.CATEGORY_LEANBACK_LAUNCHER : Intent.CATEGORY_LAUNCHER)
                 .setComponent(component)
                 .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_RESET_TASK_IF_NEEDED);
     }

@@ -608,6 +608,16 @@ public class HomeActivity extends Activity {
             if (!seen.add(p)) continue;
             all.add(new AppEntry(ri.activityInfo, String.valueOf(ri.loadLabel(pm)).trim()));
         }
+        // Phone apps with no TV entry (Chrome, MacroDroid, Speedtest… sideloaded): their tile is made from the icon.
+        // Talkies settings → Phone apps hides them, for TVs that list system screens this way. Idea from @dossantosee.
+        if (prefs.getBoolean("phone_apps", true)) {
+            Intent phone = new Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_LAUNCHER);
+            for (ResolveInfo ri : pm.queryIntentActivities(phone, 0)) {
+                String p = ri.activityInfo.packageName;
+                if (p.equals(getPackageName()) || hidden.contains(p) || !seen.add(p)) continue;
+                all.add(new AppEntry(ri.activityInfo, String.valueOf(ri.loadLabel(pm)).trim(), false));
+            }
+        }
         // Your arrangement (hold OK on an app to move it), else dock.xml; the dock fills up to its size.
         int dockSize = dockSize();
         List<String> dockPkgs = new ArrayList<>();
@@ -3245,6 +3255,13 @@ public class HomeActivity extends Activity {
             int n = (appsOrder() + 1) % APPS_ORDER.length;
             prefs.edit().putInt("apps_order", n).apply();
             setStatus(ao[0], APPS_ORDER[n]);
+            reloadApps();
+        }, true);
+        final View[] pa = new View[1];
+        pa[0] = addRow("Phone apps", prefs.getBoolean("phone_apps", true) ? "Shown" : "Hidden", () -> {
+            boolean show = !prefs.getBoolean("phone_apps", true);
+            prefs.edit().putBoolean("phone_apps", show).apply();
+            setStatus(pa[0], show ? "Shown" : "Hidden");
             reloadApps();
         }, true);
         final View[] ms = new View[1];

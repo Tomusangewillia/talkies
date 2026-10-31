@@ -3,6 +3,15 @@
 Versions are numbered *major.minor.fix*. While Talkies is in beta they start with 0: a new minor number brings new
 features, a new fix number only fixes. The version shows in Talkies settings → About.
 
+## Unreleased
+
+### New
+- **Phone apps in All apps.** Apps with no TV version (Chrome, MacroDroid, Speedtest… installed from a file) now
+  show in All apps, with a tile made from their icon. **Phone apps** in Talkies settings hides them again. An idea
+  from @dossantosee.
+- **Süper Lig and Turkey's football defaults** (Süper Lig, Champions League, Premier League), and a new set of
+  leagues is fetched straight away. Thanks @codermert.
+
 ## 1.2.4 — 31 October 2026
 
 ### Fixed
