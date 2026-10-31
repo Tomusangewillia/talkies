@@ -79,7 +79,7 @@ Control Center → **Talkies settings**, or **hold OK on the ⚙ icon** (a press
 | Dock apps | Every app, the dock's first (numbered): OK puts one in the dock or takes it out, the same as **Add to dock** and **Remove from dock** when you hold OK on an app. To change the order, hold OK on an app in the dock and choose **Move** |
 | Dock size | 5, 6, 7 (default), 8, 9 or 10 apps. The tiles grow or shrink so the dock always fills the screen's width; apps that no longer fit move to the front of All apps, and come back when it grows again |
 | All apps order | **Your order** (default: apps you moved with hold OK → Move stay put, the rest A to Z), **Recently opened** (the apps you last opened through Talkies first, the rest A to Z) or **A to Z**. In the two sorted orders only the dock's apps can be moved; the dock always keeps your order |
-| Phone apps | **Shown** (default) or Hidden: apps with no TV version (Chrome, MacroDroid… installed from a file) in All apps, with a tile made from their icon. Hidden leaves them out, for TVs that list odd system screens this way; hold OK → **Hide** hides just one |
+| Phone apps | Only on a TV with any (with how many): **Shown** (default) or Hidden: apps with no TV version (Chrome, MacroDroid… installed from a file) in All apps, with a tile made from their icon. Hidden leaves them out, for TVs that list odd system screens this way; hold OK → **Hide** hides just one |
 | RAM and storage | Shown (default) or Hidden: the two meters beside the icon buttons, with free RAM and free storage, updated every minute |
 | Live scores | Cricket and football (default), Cricket, Football or Off: what the score line and the score rows show |
 | Football leagues | The leagues the Football row follows; see [Football](#football) |

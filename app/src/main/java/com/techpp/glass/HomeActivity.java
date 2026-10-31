@@ -3257,11 +3257,12 @@ public class HomeActivity extends Activity {
             setStatus(ao[0], APPS_ORDER[n]);
             reloadApps();
         }, true);
+        // Only on a TV that has phone apps: elsewhere the setting would change nothing.
+        int phone = phoneOnlyApps();
         final View[] pa = new View[1];
-        pa[0] = addRow("Phone apps", prefs.getBoolean("phone_apps", true) ? "Shown" : "Hidden", () -> {
-            boolean show = !prefs.getBoolean("phone_apps", true);
-            prefs.edit().putBoolean("phone_apps", show).apply();
-            setStatus(pa[0], show ? "Shown" : "Hidden");
+        if (phone > 0) pa[0] = addRow("Phone apps", phoneAppsLabel(phone), () -> {
+            prefs.edit().putBoolean("phone_apps", !prefs.getBoolean("phone_apps", true)).apply();
+            setStatus(pa[0], phoneAppsLabel(phone));
             reloadApps();
         }, true);
         final View[] ms = new View[1];
@@ -3349,6 +3350,23 @@ public class HomeActivity extends Activity {
         })), true);
         addRow("About", null, this::openAbout, false);
         showMenu(350);
+    }
+
+    /** How many installed apps have a phone launcher entry but no TV one (Talkies settings → Phone apps). */
+    private int phoneOnlyApps() {
+        Set<String> tv = new HashSet<>(), phone = new HashSet<>();
+        for (ResolveInfo ri : pm.queryIntentActivities(new Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_LEANBACK_LAUNCHER), 0)) {
+            tv.add(ri.activityInfo.packageName);
+        }
+        for (ResolveInfo ri : pm.queryIntentActivities(new Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_LAUNCHER), 0)) {
+            String p = ri.activityInfo.packageName;
+            if (!tv.contains(p) && !p.equals(getPackageName())) phone.add(p);
+        }
+        return phone.size();
+    }
+
+    private String phoneAppsLabel(int n) {
+        return (prefs.getBoolean("phone_apps", true) ? "Shown" : "Hidden") + "  ·  " + n + (n == 1 ? " app" : " apps");
     }
 
     private String languagesLabel() {
