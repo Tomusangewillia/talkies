@@ -31,6 +31,8 @@ public class Backdrop extends View {
     private int glow;           // with For You hidden: a soft glow in the focused app's colour (0: none)
     private boolean day;
     private long fadeStart;
+    private Paint veil;         // with a wallpaper: the veil's gradient, made again when the veil or the height changes
+    private int veilHeight;
 
     public Backdrop(Context c, AttributeSet a) {
         super(c, a);
@@ -80,7 +82,14 @@ public class Backdrop extends View {
     }
 
     private void compose(boolean fade) {
-        int w = wallpaper ? Math.min(960, image.getWidth()) : W, h = w * 9 / 16;
+        if (wallpaper) {
+            // Drawn as it is, veil on top (onDraw): a full-size copy blended in advance would double its memory.
+            cur = prev = null;
+            veil = null;
+            invalidate();
+            return;
+        }
+        int w = W, h = H;
         Bitmap out = Bitmap.createBitmap(w, h, Bitmap.Config.ARGB_8888);
         Canvas c = new Canvas(out);
         Paint p = new Paint(Paint.FILTER_BITMAP_FLAG | Paint.ANTI_ALIAS_FLAG);
@@ -117,8 +126,24 @@ public class Backdrop extends View {
     }
 
     @Override protected void onDraw(Canvas canvas) {
-        if (cur == null) return;
         full.set(0, 0, getWidth(), getHeight());
+        if (wallpaper && image != null) {
+            // Centre crop at the screen's size, so the photo stays sharp, then the veil that keeps text readable.
+            float s = Math.max(full.width() / image.getWidth(), full.height() / image.getHeight());
+            float iw = image.getWidth() * s, ih = image.getHeight() * s;
+            paint.setAlpha(255);
+            canvas.drawBitmap(image, null, new RectF((full.width() - iw) / 2, (full.height() - ih) / 2,
+                    (full.width() + iw) / 2, (full.height() + ih) / 2), paint);
+            if (veil == null || veilHeight != getHeight()) {
+                int[] scrim = scrimStops != null ? scrimStops : new int[]{scrimTop, scrimMid, scrimBottom};
+                veil = new Paint();
+                veil.setShader(new LinearGradient(0, 0, 0, getHeight(), scrim, null, Shader.TileMode.CLAMP));
+                veilHeight = getHeight();
+            }
+            canvas.drawRect(full, veil);
+            return;
+        }
+        if (cur == null) return;
         float f = prev == null ? 1f : Math.min(1f, (SystemClock.uptimeMillis() - fadeStart) / (float) FADE_MS);
         if (f < 1f) {
             paint.setAlpha(255);

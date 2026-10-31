@@ -4219,13 +4219,17 @@ public class HomeActivity extends Activity {
         BitmapFactory.Options o = new BitmapFactory.Options();
         o.inJustDecodeBounds = true;
         BitmapFactory.decodeFile(f.getPath(), o);
+        // Full size and full colour: at half size, or in 16-bit colour, a photo looks soft and skies band.
+        int screen = getResources().getDisplayMetrics().widthPixels;
         o.inSampleSize = 1;
-        while (o.outWidth / (o.inSampleSize * 2) >= 960) o.inSampleSize *= 2;
+        while (o.outWidth / (o.inSampleSize * 2) >= screen) o.inSampleSize *= 2;
         o.inJustDecodeBounds = false;
-        o.inPreferredConfig = Bitmap.Config.RGB_565;
         Bitmap bmp = BitmapFactory.decodeFile(f.getPath(), o);
         if (bmp != null) {
             wallFit = Legibility.of(bmp, Theme.of(false).scrimTop & 0x00FFFFFF, Theme.of(true).scrimTop & 0x00FFFFFF);
+            // Kept only where it's drawn, on the graphics side, once its veil is worked out: half the memory.
+            Bitmap gpu = bmp.copy(Bitmap.Config.HARDWARE, false);
+            if (gpu != null) { bmp.recycle(); bmp = gpu; }
             backdrop.setWallpaper(bmp);
             // A new photo may suit the other look (Auto), and always needs its own veil.
             day = isDayNow();

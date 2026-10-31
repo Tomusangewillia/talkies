@@ -67,6 +67,9 @@ public class SleepService extends AccessibilityService {
     /** The held button's hold job, waiting for HOLD_MS; null once it ran or the button came up. */
     private Runnable holding;
     private boolean held;
+    /** Home held for HOLD_MS: Google TV's dashboard (Android's notification panel), as Home does without Talkies. */
+    private final Runnable homeHold = () -> { homeHeld = true; performGlobalAction(GLOBAL_ACTION_NOTIFICATIONS); };
+    private boolean homeHeld;
     private BroadcastReceiver screenOn;
     private final Handler main = new Handler(Looper.getMainLooper());
 
@@ -138,7 +141,15 @@ public class SleepService extends AccessibilityService {
             // Talkies itself; on a streaming box, it opens Google TV's home and the window watcher below brings
             // Talkies back over it. Only a TV with another default home has Home caught here.
             if (talkiesIsDefaultHome() || streamingBox()) return false;
-            if (up) openHome();
+            // Pressed: Talkies. Held: the dashboard, which catching Home would otherwise take away.
+            if (event.getAction() == KeyEvent.ACTION_DOWN && event.getRepeatCount() == 0) {
+                homeHeld = false;
+                main.postDelayed(homeHold, HOLD_MS);
+            } else if (event.getAction() == KeyEvent.ACTION_UP) {
+                main.removeCallbacks(homeHold);
+                if (up && !homeHeld) openHome();
+                homeHeld = false;
+            }
             return true;
         }
         if (warning != null && (code == KeyEvent.KEYCODE_DPAD_CENTER || code == KeyEvent.KEYCODE_ENTER)) {

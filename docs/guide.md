@@ -35,7 +35,7 @@ everything they do can also be done on the TV, in Talkies settings.
 | All apps | One row up (the last channel from the top row) | One row down | Next app in the row | Launch (hold: dock, Move, Change image, Hide, Uninstall, App info) | Dock |
 | Inputs / Control Center / settings | Previous (from the first, the last) | Next (from the last, the first) | Close | Choose | Close |
 
-**Home** always brings you back to the dock, at the top, on the Trending tab.
+**Home** always brings you back to the dock, at the top, on the Trending tab. **Holding Home** opens Google TV's dashboard (Screensaver, Inputs, Picture, Wi-Fi…), as it does without Talkies.
 
 **Navigation sounds:** Talkies plays Android's own click and move sounds when the TV's **System sounds** switch is on
 (Settings → Display & sound, or Sound), and is silent when it's off, like the rest of the TV.

@@ -3,6 +3,14 @@
 Versions are numbered *major.minor.fix*. While Talkies is in beta they start with 0: a new minor number brings new
 features, a new fix number only fixes. The version shows in Talkies settings → About.
 
+## Unreleased
+
+### Fixed
+- **Wallpapers are sharp.** Your picture showed at half the screen's resolution and in reduced colour (soft, with
+  banding in skies); now it's full HD, and it takes less memory than before. Thanks @AntonyBOrtega.
+- **Holding Home opens Google TV's dashboard again** (Screensaver, Inputs, Picture, Wi-Fi…) on TVs where Talkies
+  catches Home; a short press still opens Talkies. Thanks @Greyxvvl.
+
 ## 1.2.3 — 31 October 2026
 
 ### New
