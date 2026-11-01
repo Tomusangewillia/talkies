@@ -12,6 +12,10 @@ features, a new fix number only fixes. The version shows in Talkies settings →
 - **Süper Lig and Turkey's football defaults** (Süper Lig, Champions League, Premier League), and a new set of
   leagues is fetched straight away. Thanks @codermert.
 
+### Fixed
+- **Holding Home opens the dashboard on streaming boxes too** (Mi Box, Chromecast, Google TV Streamer…), and where
+  Talkies is the default home app. 1.2.4 only did it on TVs. Thanks @Greyxvvl.
+
 ## 1.2.4 — 31 October 2026
 
 ### Fixed

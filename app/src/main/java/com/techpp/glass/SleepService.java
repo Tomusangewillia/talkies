@@ -68,7 +68,8 @@ public class SleepService extends AccessibilityService {
     private Runnable holding;
     private boolean held;
     /** Home held for HOLD_MS: Google TV's dashboard (Android's notification panel), as Home does without Talkies. */
-    private final Runnable homeHold = () -> { homeHeld = true; performGlobalAction(GLOBAL_ACTION_NOTIFICATIONS); };
+    private final Runnable dashboard = () -> performGlobalAction(GLOBAL_ACTION_NOTIFICATIONS);
+    private final Runnable homeHold = () -> { homeHeld = true; dashboard.run(); };
     private boolean homeHeld;
     private BroadcastReceiver screenOn;
     private final Handler main = new Handler(Looper.getMainLooper());
@@ -140,7 +141,13 @@ public class SleepService extends AccessibilityService {
             // app can't do: let it through where that matters. With Talkies the default home app, Android opens
             // Talkies itself; on a streaming box, it opens Google TV's home and the window watcher below brings
             // Talkies back over it. Only a TV with another default home has Home caught here.
-            if (talkiesIsDefaultHome() || streamingBox()) return false;
+            if (talkiesIsDefaultHome() || streamingBox()) {
+                // Held: the dashboard here too. With Talkies the default home app Android doesn't open it; where it
+                // does, asking again leaves it open.
+                if (event.getAction() == KeyEvent.ACTION_DOWN && event.getRepeatCount() == 0) main.postDelayed(dashboard, HOLD_MS);
+                else if (event.getAction() == KeyEvent.ACTION_UP) main.removeCallbacks(dashboard);
+                return false;
+            }
             // Pressed: Talkies. Held: the dashboard, which catching Home would otherwise take away.
             if (event.getAction() == KeyEvent.ACTION_DOWN && event.getRepeatCount() == 0) {
                 homeHeld = false;
