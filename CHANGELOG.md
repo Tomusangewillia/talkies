@@ -6,11 +6,27 @@ features, a new fix number only fixes. The version shows in Talkies settings →
 ## Unreleased
 
 ### New
+- **A weather icon** before the weather at the top left: a small line drawing of the sky (sun, moon, partly cloudy
+  by day or night, cloud, rain, snow, thunder, fog), in the text's colour.
+
+## 1.2.5 — 1 November 2026
+
+### New
 - **Phone apps in All apps.** Apps with no TV version (Chrome, MacroDroid, Speedtest… installed from a file) now
   show in All apps, with a tile made from their icon. **Phone apps** in Talkies settings hides them again. An idea
   from @dossantosee.
 - **Süper Lig and Turkey's football defaults** (Süper Lig, Champions League, Premier League), and a new set of
   leagues is fetched straight away. Thanks @codermert.
+
+### Fixed
+- **Holding Home opens the dashboard on streaming boxes too** (Mi Box, Chromecast, Google TV Streamer…), and where
+  Talkies is the default home app. 1.2.4 only did it on TVs. Thanks @Greyxvvl.
+
+### Changed
+- **Remote keys is On by default**, so Home goes straight to Talkies without Google TV's home showing first, as with
+  other launchers. If holding Volume then changes it only one step per press on your TV, turn it Off (Talkies
+  settings → Remote keys). If you had turned it Off, it stays Off.
+- **With Remote keys Off, Google TV's home shows for less time** before Talkies covers it.
 
 ## 1.2.4 — 31 October 2026
 

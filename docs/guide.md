@@ -85,7 +85,7 @@ Control Center → **Talkies settings**, or **hold OK on the ⚙ icon** (a press
 | Football leagues | The leagues the Football row follows; see [Football](#football) |
 | Channels | Choose which app channels show below the dock, and their order |
 | Hidden apps | Shown once you've hidden an app: the apps you hid; OK shows one again |
-| Remote keys | Give a remote button another job: open an app, Inputs, Recent apps, Talkies, or nothing. **Add a key**, press the button, choose. Once it has a job, **When held** gives it a second one for holding it (over half a second). Navigation, OK, Back, Home, volume and power can't be changed. A button Android has no name for shows as *Button 0x…* (its code from the remote). If a button still just does its own job while Talkies waits for it (the app buttons on some TVs), the TV's software handles it before Android sees it, and no app can change it. **Remote keys: On or Off** at the top: on once you've given a button a job (or whenever you switch it on). On some TVs, while it's on, holding Volume changes it only one step per press, in every app: Android stops repeating a held button once an app watches the remote. Off, holding Volume works, and Home reaches Talkies with Google TV's home showing for a moment first |
+| Remote keys | Give a remote button another job: open an app, Inputs, Recent apps, Talkies, or nothing. **Add a key**, press the button, choose. Once it has a job, **When held** gives it a second one for holding it (over half a second). Navigation, OK, Back, Home, volume and power can't be changed. A button Android has no name for shows as *Button 0x…* (its code from the remote). If a button still just does its own job while Talkies waits for it (the app buttons on some TVs), the TV's software handles it before Android sees it, and no app can change it. **Remote keys: On or Off** at the top, On by default: Home goes straight to Talkies. On some TVs, while it's on, holding Volume changes it only one step per press, in every app: Android stops repeating a held button once an app watches the remote, and the TV acts on Volume before any app sees it, so no app can repeat it either. Off, holding Volume works, and Home reaches Talkies with Google TV's home showing for a moment first |
 | Network debugging | "On · port 5555" while computers on your network can control the TV over ADB (how Talkies was installed). **Turn off** (needs the permission below) or open Developer options; turning it on again is done in Developer options |
 | Talkies at power-on | **After a restart** (default), or **Every time**: also when the TV wakes from standby into the last HDMI input or app. Pressing a button as it wakes keeps what's on screen |
 | Empty inputs | **Shown** (default), or **Under More inputs**: Inputs lists only ports with something plugged in, and a More inputs row brings back the rest |
@@ -235,7 +235,8 @@ Artwork is cached on the TV in `files/channels/`.
 ## Weather
 
 The weather shows at the top left, for example "27° SHOWERS", in °C, or °F where that's the custom (the US and a
-few others; see [Which country](#trending-and-new-in-)).
+few others; see [Which country](#trending-and-new-in-)), after a small line drawing of the sky: sun, moon, sun or
+moon behind a cloud, cloud, rain, snow, thunder or fog.
 The weather part combines two sources:
 
 - **Temperature** is measured at the **nearest airport weather station**. Airports publish observations (METAR) every

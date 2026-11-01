@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Weather line icon (partly night): a line drawing, tinted the weather text's colour. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="24dp"
+    android:height="24dp"
+    android:viewportWidth="24"
+    android:viewportHeight="24">
+    <path
+        android:pathData="M10.6,9.6A3.6,3.6 0 1,1 6.4,4.4a2.8,2.8 0 0,0 4.2,5.2z M9,20.5a3.8,3.8 0 0,1 -0.3,-7.58a5,5 0 0,1 9.6,1.3a3.2,3.2 0 0,1 -0.1,6.28z"
+        android:strokeColor="#FFFFFFFF"
+        android:strokeWidth="1.7"
+        android:strokeLineCap="round"
+        android:strokeLineJoin="round" />
+</vector>

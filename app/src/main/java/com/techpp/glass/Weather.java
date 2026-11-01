@@ -289,6 +289,29 @@ final class Weather {
         return s.isEmpty() ? icao : s;
     }
 
+    /**
+     * The little drawing before the weather line ("27° Showers"), from its condition; 0 for none. Partly cloudy shows
+     * the sun or the moon by the time of day.
+     */
+    static int icon(String line, boolean day) {
+        if (line == null) return 0;
+        int at = line.indexOf("° ");
+        String c = (at < 0 ? line : line.substring(at + 2)).split(" · ")[0];
+        switch (c) {
+            case "Sunny": return R.drawable.ic_wx_sun;
+            case "Clear": return R.drawable.ic_wx_moon;
+            case "Mostly sunny": return R.drawable.ic_wx_partly;
+            case "Mostly clear": return R.drawable.ic_wx_partly_night;
+            case "Partly cloudy": return day ? R.drawable.ic_wx_partly : R.drawable.ic_wx_partly_night;
+            case "Overcast": return R.drawable.ic_wx_cloud;
+            case "Fog": return R.drawable.ic_wx_fog;
+            case "Drizzle": case "Rain": case "Showers": return R.drawable.ic_wx_rain;
+            case "Snow": return R.drawable.ic_wx_snow;
+            case "Thunderstorm": return R.drawable.ic_wx_thunder;
+            default: return 0;
+        }
+    }
+
     /** WMO weather codes, as Open-Meteo uses them. */
     private static String wmoCondition(int code, boolean day) {
         if (code == 0) return day ? "Sunny" : "Clear";
