@@ -2580,8 +2580,8 @@ public class HomeActivity extends Activity {
 
     private void openRemoteKeys() {
         boolean on = SleepService.watchButtons(this);
-        beginMenu(settingsAt, on ? "Remote keys  ·  On: some TVs then change volume one step per press"
-                : "Remote keys  ·  Off: holding Volume works on every TV");
+        beginMenu(settingsAt, on ? "Remote keys  ·  On: Home goes straight to Talkies. Some TVs then change volume one step per press"
+                : "Remote keys  ·  Off: holding Volume works on every TV. Home shows Google TV for a moment first");
         addRow("Remote keys", on ? "On" : "Off", () -> {
             prefs.edit().putBoolean("remote_keys_on", !on).apply();
             SleepService.applyButtonWatching();

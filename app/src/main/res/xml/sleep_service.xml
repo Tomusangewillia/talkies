@@ -11,4 +11,4 @@
     android:canRequestFilterKeyEvents="true"
     android:canRetrieveWindowContent="true"
     android:packageNames="in.startv.hotstar,com.google.android.apps.tv.launcherx,com.google.android.katniss"
-    android:notificationTimeout="100" />
+    android:notificationTimeout="0" />

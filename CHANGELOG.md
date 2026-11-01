@@ -16,6 +16,12 @@ features, a new fix number only fixes. The version shows in Talkies settings →
 - **Holding Home opens the dashboard on streaming boxes too** (Mi Box, Chromecast, Google TV Streamer…), and where
   Talkies is the default home app. 1.2.4 only did it on TVs. Thanks @Greyxvvl.
 
+### Changed
+- **Remote keys is On by default**, so Home goes straight to Talkies without Google TV's home showing first, as with
+  other launchers. If holding Volume then changes it only one step per press on your TV, turn it Off (Talkies
+  settings → Remote keys). If you had turned it Off, it stays Off.
+- **With Remote keys Off, Google TV's home shows for less time** before Talkies covers it.
+
 ## 1.2.4 — 31 October 2026
 
 ### Fixed

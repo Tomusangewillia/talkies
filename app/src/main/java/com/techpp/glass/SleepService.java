@@ -318,14 +318,14 @@ public class SleepService extends AccessibilityService {
     }
 
     /**
-     * Talkies settings → Remote keys, On or Off. Unless you chose, it's on once you've given a button a job. Off, the
-     * service doesn't watch the remote's buttons, because on some TVs any service that does stops a held Volume button
-     * repeating, in every app. Home still reaches Talkies, through the window watcher (Google TV's home may show for a
-     * moment). The sleep warning's OK and choosing a button for a remote key turn watching on while they need it.
+     * Talkies settings → Remote keys, On (the default) or Off. On, Home goes straight to Talkies, as other launchers do.
+     * Off, the service doesn't watch the remote's buttons, because on some TVs any service that does stops a held
+     * Volume button repeating, in every app; Home still reaches Talkies through the window watcher, with Google TV's
+     * home showing for a moment. The sleep warning's OK and choosing a button for a remote key turn watching on while they need it.
      */
     static boolean watchButtons(Context c) {
         android.content.SharedPreferences p = c.getSharedPreferences("home", MODE_PRIVATE);
-        return p.contains("remote_keys_on") ? p.getBoolean("remote_keys_on", true) : !RemoteKeys.all(c).isEmpty();
+        return p.getBoolean("remote_keys_on", true);
     }
 
     /** After Remote keys changes: the running service starts or stops watching buttons now. */
