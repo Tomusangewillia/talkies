@@ -3,6 +3,12 @@
 Versions are numbered *major.minor.fix*. While Talkies is in beta they start with 0: a new minor number brings new
 features, a new fix number only fixes. The version shows in Talkies settings → About.
 
+## Unreleased
+
+### New
+- **A weather icon** before the weather at the top left: a small line drawing of the sky (sun, moon, partly cloudy
+  by day or night, cloud, rain, snow, thunder, fog), in the text's colour.
+
 ## 1.2.5 — 1 November 2026
 
 ### New

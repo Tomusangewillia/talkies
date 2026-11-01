@@ -357,6 +357,7 @@ public class HomeActivity extends Activity {
         bigAmPm.setTextColor(theme.text);
         bigDate.setTextColor(theme.text);
         bigWeather.setTextColor(theme.text2);
+        bigWeather.setCompoundDrawableTintList(ColorStateList.valueOf(theme.text2));
         meters.setColor(theme.text);
         bigRule.setBackgroundColor((theme.text2 & 0x00FFFFFF) | 0x66000000);
         allAppsLabel.setTextColor(theme.text);
@@ -460,6 +461,7 @@ public class HomeActivity extends Activity {
         info.setVisibility(View.GONE);
         float k = forYou ? 1f : 1.6f;
         bigWeather.setTextSize(android.util.TypedValue.COMPLEX_UNIT_SP, 12 * k);
+        weatherIcon();
         bigTime.setTextSize(android.util.TypedValue.COMPLEX_UNIT_SP, 42 * k);
         bigAmPm.setTextSize(android.util.TypedValue.COMPLEX_UNIT_SP, 15 * k);
         bigDate.setTextSize(android.util.TypedValue.COMPLEX_UNIT_SP, 14 * k);
@@ -472,6 +474,19 @@ public class HomeActivity extends Activity {
         ((ViewGroup.MarginLayoutParams) bigClock.getLayoutParams()).topMargin = px(forYou ? 26 : 34);
         bigClock.requestLayout();
         styleTop();
+    }
+
+    /** The weather line's icon, sized to its capitals and drawn in its colour (the text's tint). */
+    private void weatherIcon() {
+        int res = Weather.icon(weatherLine, weather.isDay());  // the sun's, not the look's
+        android.graphics.drawable.Drawable d = res == 0 ? null : getDrawable(res);
+        if (d != null) {
+            int size = Math.round(bigWeather.getTextSize() * 1.15f);
+            d.setBounds(0, 0, size, size);
+        }
+        bigWeather.setCompoundDrawablesRelative(d, null, null, null);
+        bigWeather.setCompoundDrawablePadding(Math.round(bigWeather.getTextSize() * 0.45f));
+        bigWeather.setCompoundDrawableTintList(ColorStateList.valueOf(bigWeather.getCurrentTextColor()));
     }
 
     /** "1:05 PM · Wed 21 Oct · 27° Showers", the time a little stronger. */
@@ -491,6 +506,7 @@ public class HomeActivity extends Activity {
         bigAmPm.setVisibility(h24 ? View.GONE : View.VISIBLE);
         bigDate.setText(DateFormat.format("EEEE  d MMMM", now));
         bigWeather.setText(weatherLine == null ? "" : weatherLine);
+        weatherIcon();
         if (meters.getVisibility() == View.VISIBLE) meters.update();
         bigWeather.setVisibility(weatherLine == null ? View.GONE : View.VISIBLE);
         updateScore();

@@ -235,7 +235,8 @@ Artwork is cached on the TV in `files/channels/`.
 ## Weather
 
 The weather shows at the top left, for example "27° SHOWERS", in °C, or °F where that's the custom (the US and a
-few others; see [Which country](#trending-and-new-in-)).
+few others; see [Which country](#trending-and-new-in-)), after a small line drawing of the sky: sun, moon, sun or
+moon behind a cloud, cloud, rain, snow, thunder or fog.
 The weather part combines two sources:
 
 - **Temperature** is measured at the **nearest airport weather station**. Airports publish observations (METAR) every
